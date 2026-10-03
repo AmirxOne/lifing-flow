@@ -342,16 +342,16 @@ export function CalendarClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً شام خارج از خانه" />
+            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً شام خارج از خانه" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <label htmlFor="kind" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
               <Select value={kind} onChange={setKind} options={EVENT_KINDS.map((k) => ({ value: k, label: `${EVENT_KIND_EMOJI[k]} ${EVENT_KIND_FA[k]}` }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
+              <label htmlFor="date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
               <div className="text-[13px]">{(() => {
                 const p = jalaliPartsInTz(new Date(dateIso + "T12:00:00+03:30"));
                 return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
@@ -360,25 +360,25 @@ export function CalendarClient() {
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">شروع</label>
+              <label htmlFor="شروع" className="mb-1.5 block text-[12px] font-medium text-ink-soft">شروع</label>
               <TimePicker value={startTime} onChange={setStartTime} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">پایان</label>
+              <label htmlFor="پایان" className="mb-1.5 block text-[12px] font-medium text-ink-soft">پایان</label>
               <TimePicker value={endTime} onChange={setEndTime} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادآور</label>
+              <label htmlFor="یادآور" className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادآور</label>
               <Select value={reminder} onChange={setReminder} options={REMINDERS.map((r) => ({ value: r, label: REMINDER_FA[r] }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مکان (اختیاری)</label>
-              <input value={location} onChange={(e) => setLocation(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً کافه جام" />
+              <label htmlFor="location" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مکان (اختیاری)</label>
+              <input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً کافه جام" />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تکرار</label>
+              <label htmlFor="recurrence" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تکرار</label>
               <Select value={recurrence} onChange={setRecurrence} options={[
                 { value: "NONE", label: "بدون تکرار" },
                 { value: "DAILY", label: "روزانه" },
@@ -404,23 +404,23 @@ export function CalendarClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
-            <input value={impTitle} onChange={(e) => setImpTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً تولد سارا" />
+            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input id="title" value={impTitle} onChange={(e) => setImpTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً تولد سارا" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <label htmlFor="kind" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
               <Select value={impKind} onChange={setImpKind} options={IMPORTANT_KINDS.map((k) => ({ value: k, label: IMPORTANT_KIND_FA[k] }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
+              <label htmlFor="date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
               <div className="pt-2 text-[13px]">{(() => {
                 const p = jalaliPartsInTz(new Date(impDate + "T12:00:00+03:30"));
                 return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
               })()}</div>
             </div>
           </div>
-          <input type="date" value={impDate} onChange={(e) => setImpDate(e.target.value)} className="hidden" aria-hidden />
+          <input id="date" type="date" value={impDate} onChange={(e) => setImpDate(e.target.value)} className="hidden" aria-hidden />
         </div>
       </Modal>
     </div>

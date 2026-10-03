@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { faPrice, faCount, CATEGORY_FA, CATEGORY_EMOJI, PRIORITY_FA, EVENT_KIND_FA, EVENT_KIND_EMOJI, MOOD_EMOJI, MOOD_FA } from "@/lib";
 import { jalaliToday, J_MONTHS, J_WEEKDAYS_LONG } from "@/lib/jalali";
+import { faStr, faNum } from "@/lib/fa";
 
 interface DashboardData {
   today: {
@@ -58,7 +59,7 @@ export function DashboardClient() {
   }
 
   const t = jalaliToday();
-  const todayLabel = `${J_WEEKDAYS_LONG[new Date(data.date).getDay()]} ${t.jd} ${J_MONTHS[t.jm - 1]}`;
+  const todayLabel = `${J_WEEKDAYS_LONG[new Date(data.date).getDay()]} ${faNum(t.jd)} ${J_MONTHS[t.jm - 1]}`;
 
   return (
     <div className="space-y-4">
@@ -95,8 +96,8 @@ export function DashboardClient() {
             data.balance.direction === "EVEN"
               ? "حساب‌ها برابر است"
               : data.balance.direction === "PARTNER_OWES_ME"
-                ? `همسرتان ${faPrice(data.balance.amount)} بدهکار است`
-                : `${faPrice(data.balance.amount)} بدهکار همسرتان هستید`
+                ? "همسرتان بدهکار است"
+                : "شما بدهکار همسرتان هستید"
           }
         />
       </div>
@@ -162,7 +163,7 @@ export function DashboardClient() {
                   <div className="truncate text-[13px] font-medium">{ev.title}</div>
                   <div className="text-[11px] text-ink-faint">
                     {EVENT_KIND_FA[ev.kind]}
-                    {ev.startTime ? ` — ${ev.startTime}` : ""}
+                    {ev.startTime ? ` — ${faStr(ev.startTime)}` : ""}
                   </div>
                 </div>
               </div>

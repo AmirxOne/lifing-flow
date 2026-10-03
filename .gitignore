@@ -24,3 +24,12 @@ prisma/*.db
 
 # PostgreSQL dumps (scripts/backup)
 /backups/
+
+node_modules/
+.next/
+.env
+.env.local
+test-results/
+playwright-report/
+blob-report/
+*.png

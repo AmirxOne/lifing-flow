@@ -177,8 +177,9 @@ export function ShoppingClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام کالا</label>
+            <label htmlFor="item-title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام کالا</label>
             <input
+              id="item-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -187,8 +188,9 @@ export function ShoppingClient() {
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تعداد</label>
+              <label htmlFor="quantity" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تعداد</label>
               <input
+              id="quantity"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -196,17 +198,17 @@ export function ShoppingClient() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">دسته</label>
+              <label htmlFor="category" className="mb-1.5 block text-[12px] font-medium text-ink-soft">دسته</label>
               <Select value={fCategory} onChange={setFCategory} options={SHOP_CATEGORIES.map((c) => ({ value: c, label: SHOP_CATEGORY_FA[c] }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">اولویت</label>
+              <label htmlFor="priority" className="mb-1.5 block text-[12px] font-medium text-ink-soft">اولویت</label>
               <Select value={priority} onChange={setPriority} options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_FA[p] }))} />
             </div>
           </div>
           {partner && (
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">بر عهده (اختیاری)</label>
+              <label htmlFor="بر عهده (اختیاری)" className="mb-1.5 block text-[12px] font-medium text-ink-soft">بر عهده (اختیاری)</label>
               <Select
                 value={assignedToId}
                 onChange={setAssignedToId}
@@ -219,7 +221,7 @@ export function ShoppingClient() {
             </div>
           )}
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
+            <label htmlFor="note-field" className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}

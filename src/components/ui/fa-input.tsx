@@ -32,6 +32,7 @@ export function FaInput({
   onBlur?: (ascii: string) => void;
   "data-testid"?: string;
   "aria-label"?: string;
+  id?: string;
 }) {
   const ascii = String(value ?? "");
   const shown = ascii ? withRtlMark(faStr(ascii)) : "";

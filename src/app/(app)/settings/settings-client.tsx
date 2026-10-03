@@ -128,8 +128,8 @@ export function SettingsClient() {
         <CardHeader title="خانواده" subtitle={partner ? `همسر: ${partner.fullName}` : "همسری ندارید — دعوت کنید"} />
         <CardBody className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام خانواده</label>
-            <input value={hhName} onChange={(e) => setHhName(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
+            <label htmlFor="household-name" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام خانواده</label>
+            <input id="household-name" value={hhName} onChange={(e) => setHhName(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
           </div>
           <div>
             <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">آواتار خانواده</span>
@@ -188,12 +188,12 @@ export function SettingsClient() {
         <CardHeader title="تغییر رمز عبور" />
         <CardBody className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">رمز فعلی</label>
-            <input type="password" dir="ltr" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
+            <label htmlFor="old-password" className="mb-1.5 block text-[12px] font-medium text-ink-soft">رمز فعلی</label>
+            <input id="old-password" type="password" dir="ltr" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">رمز جدید (حداقل ۸ کاراکتر)</label>
-            <input type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
+            <label htmlFor="new-password" className="mb-1.5 block text-[12px] font-medium text-ink-soft">رمز جدید (حداقل ۸ کاراکتر)</label>
+            <input id="new-password" type="password" dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
           </div>
           <Button size="sm" variant="secondary" loading={passwordMutation.isPending} disabled={!oldPassword || newPassword.length < 8} onClick={() => passwordMutation.mutate()}>
             تغییر رمز

@@ -311,8 +311,9 @@ export function FinanceClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
             <input
+              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -320,9 +321,11 @@ export function FinanceClient() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ (تومان)</label>
+            <label htmlFor="expense-amount" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ (تومان)</label>
             <FaInput
               allow="digits"
+              id="expense-amount"
+              aria-label="مبلغ (تومان)" data-field="amount"
               value={amount}
               onChange={setAmount}
               className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -331,17 +334,17 @@ export function FinanceClient() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">دسته</label>
+              <label htmlFor="category" className="mb-1.5 block text-[12px] font-medium text-ink-soft">دسته</label>
               <Select value={fCategory} onChange={setFCategory} options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: `${CATEGORY_EMOJI[c]} ${CATEGORY_FA[c]}` }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
+              <label htmlFor="date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
               <JalaliDatePicker value={fDate} onChange={setFDate} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">پرداخت‌کننده</label>
+              <label htmlFor="payer" className="mb-1.5 block text-[12px] font-medium text-ink-soft">پرداخت‌کننده</label>
               <Select
                 value={payerId || meId}
                 onChange={setPayerId}
@@ -352,7 +355,7 @@ export function FinanceClient() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <label htmlFor="kind" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
               <Select
                 value={isShared ? "SHARED" : "PERSONAL"}
                 onChange={(v) => setIsShared(v === "SHARED")}
@@ -364,7 +367,7 @@ export function FinanceClient() {
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
+            <label htmlFor="note-field" className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}

@@ -25,7 +25,14 @@ function nextDueDate(current: Date, recurrence: string, interval: number): Date 
   switch (recurrence) {
     case "DAILY": d.setDate(d.getDate() + interval); return d;
     case "WEEKLY": d.setDate(d.getDate() + 7 * interval); return d;
-    case "MONTHLY": d.setMonth(d.getMonth() + interval); return d;
+    case "MONTHLY": {
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + interval);
+      const lastOfTarget = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, lastOfTarget));
+      return d;
+    }
     case "CUSTOM": d.setDate(d.getDate() + interval); return d;
     default: return null;
   }

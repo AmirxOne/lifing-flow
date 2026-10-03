@@ -210,16 +210,16 @@ export function MealsClient() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">وعده</label>
+              <label htmlFor="وعده" className="mb-1.5 block text-[12px] font-medium text-ink-soft">وعده</label>
               <Select value={slot} onChange={setSlot} options={MEAL_SLOTS.map((s) => ({ value: s, label: MEAL_SLOT_FA[s] }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام غذا</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً زرشک‌پلو" />
+              <label htmlFor="meal-title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام غذا</label>
+              <input id="meal-title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً زرشک‌پلو" />
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مواد اولیه (هر خط یک مورد — قابل افزودن به لیست خرید)</label>
+            <label htmlFor="ingredients" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مواد اولیه (هر خط یک مورد — قابل افزودن به لیست خرید)</label>
             <textarea
               value={ingredients}
               onChange={(e) => setIngredients(e.target.value)}
@@ -230,8 +230,8 @@ export function MealsClient() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
-            <input value={note} onChange={(e) => setNote(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
+            <label htmlFor="note-field" className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
+            <input id="note-field" value={note} onChange={(e) => setNote(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
           </div>
         </div>
       </Modal>

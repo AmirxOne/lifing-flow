@@ -198,16 +198,16 @@ export function RelationshipClient() {
           <CardHeader title="چک‌این امروز" subtitle="سه سؤال کوتاه برای قلب‌به‌قلب بودن" />
           <CardBody className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">چه چیزی امروز خوشحالت کرد؟</label>
-              <textarea value={happy} onChange={(e) => setHappy(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
+              <label htmlFor="چه چیزی امروز خوشحالت کرد؟" className="mb-1.5 block text-[12px] font-medium text-ink-soft">چه چیزی امروز خوشحالت کرد؟</label>
+              <textarea id="چه چیزی امروز خوشحالت کرد؟" value={happy} onChange={(e) => setHappy(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">چه چیزی اذیتت کرد؟</label>
-              <textarea value={bothered} onChange={(e) => setBothered(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
+              <label htmlFor="چه چیزی اذیتت کرد؟" className="mb-1.5 block text-[12px] font-medium text-ink-soft">چه چیزی اذیتت کرد؟</label>
+              <textarea id="چه چیزی اذیتت کرد؟" value={bothered} onChange={(e) => setBothered(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">امروز چه چیزی از همسرت نیاز داری؟</label>
-              <textarea value={need} onChange={(e) => setNeed(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
+              <label htmlFor="امروز چه چیزی از همسرت نیاز داری؟" className="mb-1.5 block text-[12px] font-medium text-ink-soft">امروز چه چیزی از همسرت نیاز داری؟</label>
+              <textarea id="امروز چه چیزی از همسرت نیاز داری؟" value={need} onChange={(e) => setNeed(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex gap-2">

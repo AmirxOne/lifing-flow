@@ -182,8 +182,9 @@ export function GoalsClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان هدف</label>
+            <label htmlFor="goal-title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان هدف</label>
             <input
+              id="goal-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -191,7 +192,7 @@ export function GoalsClient() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ هدف (تومان)</label>
+            <label htmlFor="goal-amount" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ هدف (تومان)</label>
             <FaInput
               allow="digits"
               value={target}
@@ -201,11 +202,11 @@ export function GoalsClient() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مهلت (اختیاری)</label>
+            <label htmlFor="due-date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مهلت (اختیاری)</label>
             <JalaliDatePicker value={deadline} onChange={setDeadline} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
+            <label htmlFor="note-field" className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادداشت (اختیاری)</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -229,7 +230,7 @@ export function GoalsClient() {
         }
       >
         <div>
-          <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ (تومان)</label>
+          <label htmlFor="amount" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ (تومان)</label>
           <FaInput
             allow="digits"
             value={contribAmount}

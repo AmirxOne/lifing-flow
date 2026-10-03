@@ -143,20 +143,20 @@ export function MemoriesClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً اولین سفر مشترک" />
+            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً اولین سفر مشترک" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ خاطره</label>
+            <label htmlFor="تاریخ خاطره" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ خاطره</label>
             <JalaliDatePicker value={date} onChange={setDate} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">شرح</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" placeholder="چی شد که خوب بود؟" />
+            <label htmlFor="body" className="mb-1.5 block text-[12px] font-medium text-ink-soft">شرح</label>
+            <textarea id="body" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" placeholder="چی شد که خوب بود؟" />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">برچسب‌ها (با ویرگول جدا کنید)</label>
-            <input value={tags} onChange={(e) => setTags(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="سفر، شمال" />
+            <label htmlFor="tags" className="mb-1.5 block text-[12px] font-medium text-ink-soft">برچسب‌ها (با ویرگول جدا کنید)</label>
+            <input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="سفر، شمال" />
           </div>
         </div>
       </Modal>

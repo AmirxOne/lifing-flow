@@ -179,8 +179,9 @@ export function TasksClient() {
       >
         <div className="space-y-3">
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
             <input
+              id="task-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
@@ -188,7 +189,7 @@ export function TasksClient() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">توضیح (اختیاری)</label>
+            <label htmlFor="description" className="mb-1.5 block text-[12px] font-medium text-ink-soft">توضیح (اختیاری)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -198,21 +199,21 @@ export function TasksClient() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مهلت (اختیاری)</label>
+              <label htmlFor="due-date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مهلت (اختیاری)</label>
               <JalaliDatePicker value={dueDate} onChange={setDueDate} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">اولویت</label>
+              <label htmlFor="priority" className="mb-1.5 block text-[12px] font-medium text-ink-soft">اولویت</label>
               <Select value={priority} onChange={setPriority} options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_FA[p] }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تکرار</label>
+              <label htmlFor="recurrence" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تکرار</label>
               <Select value={recurrence} onChange={setRecurrence} options={RECURRENCES.map((r) => ({ value: r, label: RECURRENCE_FA[r] }))} />
             </div>
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">بر عهده</label>
+              <label htmlFor="assignee" className="mb-1.5 block text-[12px] font-medium text-ink-soft">بر عهده</label>
               <Select
                 value={assignedToId}
                 onChange={setAssignedToId}
