@@ -1,0 +1,418 @@
+// ═════════════════════════ Life Hub (lifing-flow) ═════════════════════════
+// Private two-person shared-life app. All resources are scoped to a
+// Household. Roles: SYSTEM_ADMIN, OWNER, PARTNER, (TEST implied by seed).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── /RBAC ─────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String
+  passwordHash String
+  avatarEmoji  String?  // partner avatar (emoji-based, zero-cost file storage)
+  role         String   @default("USER") // USER | SYSTEM_ADMIN
+  isActive     Boolean  @default(true)
+  onboardingDone Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  expenses            Expense[]          @relation("payer")
+  createdExpenses     Expense[]          @relation("expenseCreator")
+  sentInvitations     Invitation[]       @relation("inviter")
+  goalContribs        GoalContribution[]
+  shoppingItems       ShoppingItem[]     @relation("shopAdder")
+  assignedShopping    ShoppingItem[]     @relation("shopAssignee")
+  tasks               Task[]             @relation("taskAssignee")
+  completedTasks      Task[]             @relation("taskCompleter")
+  memories            Memory[]           @relation("memoryCreator")
+  moods               Mood[]
+  checkins            CheckIn[]
+  notifications       Notification[]
+  activities          Activity[]
+  aiChats             AiChat[]
+
+  @@index([householdId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  avatarEmoji String @default("🏠")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  invitations     Invitation[]
+  expenses        Expense[]
+  budgets         Budget[]
+  goals           Goal[]
+  shoppingItems   ShoppingItem[]
+  tasks           Task[]
+  events          EventModel[]
+  importantDates  ImportantDate[]
+  mealEntries     MealEntry[]
+  moods           Mood[]
+  checkins        CheckIn[]
+  memories        Memory[]
+  dateIdeas       DateIdea[]
+  notifications   Notification[]
+  activities      Activity[]
+  aiChats         AiChat[]
+}
+
+// Household membership invite: single-use, expiring code
+model Invitation {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  householdId String
+  createdById String
+  inviteeEmail String?
+  status      String    @default("PENDING") // PENDING | ACCEPTED | REJECTED | EXPIRED
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("inviter", fields: [createdById], references: [id], onDelete: Cascade)
+  @@index([householdId])
+}
+
+// ───────────────────────────── /Finance ─────────────────────────────
+
+model Expense {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  amount      Int      // تومان — integer, never float
+  category    String   // FOOD|HOME|TRANSPORT|FUN|SHOPPING|MEDICAL|BILLS|TRAVEL|CLOTHES|OTHER
+  date        DateTime // local date (midnight)
+  payerId     String
+  isShared    Boolean  @default(true)
+  note        String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  payer     User      @relation("payer", fields: [payerId], references: [id], onDelete: Cascade)
+  createdByRef User   @relation("expenseCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+  @@index([householdId, category])
+}
+
+model Budget {
+  id          String   @id @default(cuid())
+  householdId String
+  category    String
+  amount      Int // monthly cap, تومان
+  month       String // "1405-07" Jalali month key
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, category, month])
+  @@index([householdId, month])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  targetAmount Int
+  deadline    DateTime?
+  note        String?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household     Household         @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([householdId])
+}
+
+model GoalContribution {
+  id        String   @id @default(cuid())
+  goalId    String
+  userId    String
+  amount    Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([goalId])
+}
+
+// ───────────────────────────── /Shopping ─────────────────────────────
+
+model ShoppingItem {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  quantity    String   @default("1")
+  unit        String?
+  category    String   @default("OTHER") // grocery categories
+  priority    String   @default("NORMAL") // LOW|NORMAL|HIGH
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  note        String?
+  addedById   String
+  assignedToId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  addedBy   User      @relation("shopAdder", fields: [addedById], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("shopAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, completed])
+}
+
+// ───────────────────────────── /Tasks ─────────────────────────────
+
+model Task {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  description String?
+  assignedToId String?
+  dueDate     DateTime?
+  priority    String   @default("NORMAL") // LOW|NORMAL|HIGH
+  recurrence  String   @default("NONE")   // NONE|DAILY|WEEKLY|MONTHLY|CUSTOM
+  recurrenceInterval Int @default(1)
+  status      String   @default("OPEN")   // OPEN | DONE
+  completedAt DateTime?
+  completedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household  Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  assignedTo User?     @relation("taskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  completedBy User?    @relation("taskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([householdId, status])
+  @@index([householdId, dueDate])
+}
+
+// ───────────────────────────── /Calendar ─────────────────────────────
+
+model EventModel {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  description String?
+  date        DateTime // local midnight of event day
+  startTime   String?  // "HH:mm" 24h local
+  endTime     String?  // "HH:mm"
+  location    String?
+  kind        String   @default("SHARED") // PERSONAL|SHARED|APPOINTMENT|FAMILY|DATE|IMPORTANT
+  reminder    String?  // NONE|AT_TIME|1H|3H|1D|1D_12H
+  recurrence  String   @default("NONE")   // NONE|DAILY|WEEKLY|MONTHLY
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+}
+
+model ImportantDate {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  kind        String   @default("CUSTOM") // BIRTHDAY|ANNIVERSARY|WEDDING|CUSTOM
+  date        DateTime // local midnight
+  repeatsYearly Boolean @default(true)
+  reminderOffsets Json? // [7,3,1] days before
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+}
+
+// ───────────────────────────── /Meals ─────────────────────────────
+
+model MealEntry {
+  id          String   @id @default(cuid())
+  householdId String
+  date        DateTime // local midnight of the day
+  slot        String   // BREAKFAST|LUNCH|DINNER|SNACK
+  title       String
+  note        String?
+  ingredients Json?    // [{name, qty}] — push-to-shopping source
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, date, slot])
+  @@index([householdId, date])
+}
+
+// ───────────────────────────── /Relationship ─────────────────────────────
+
+model Mood {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  date        DateTime // local midnight — one mood per user per day
+  mood        String   // GREAT|GOOD|NORMAL|SAD|ANGRY
+  note        String?
+  visibility  String   @default("SHARED") // PRIVATE | SHARED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([householdId, date])
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  date        DateTime // local midnight — one check-in per user per day
+  happy       String?  // what made you happy
+  bothered    String?  // what bothered you
+  need        String?  // what you need from partner
+  visibility  String   @default("SHARED") // PRIVATE | SHARED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([householdId, date])
+}
+
+model DateIdea {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  description String?
+  budget      Int?     // تومان
+  setting     String   @default("ANY") // INDOOR|OUTDOOR|ANY
+  time        String?  // e.g. "FRIDAY_EVENING"
+  done        Boolean  @default(false)
+  doneAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+}
+
+// ───────────────────────────── /Memories ─────────────────────────────
+
+model Memory {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  description String?
+  date        DateTime // local midnight
+  photos      Json?    // data URLs / uploaded refs
+  tags        Json?    // ["سفر", ...]
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("memoryCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+}
+
+// ───────────────────────────── /Platform ─────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  householdId String?
+  type      String   // EXPENSE|SHOPPING|TASK|EVENT|REMINDER|GOAL|IMPORTANT_DATE|INVITE|ACTIVITY|AI
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household  Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  type        String   // EXPENSE_ADDED|TASK_DONE|...
+  summary     String
+  entityId    String?
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, createdAt])
+}
+
+model AiChat {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  question    String
+  answer      String
+  mode        String   @default("ASK") // ASK|MEAL_PLAN|SHOPPING|DATE_NIGHT|FINANCE
+  data        Json?    // validated structured payload (if any)
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, createdAt])
+}

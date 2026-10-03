@@ -1,0 +1,428 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ApiError } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-modal";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/jalali-date-picker";
+import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/components/ui/card";
+import { SegmentedTabs } from "@/components/ui/segmented-tabs";
+import {
+  EVENT_KINDS, EVENT_KIND_FA, EVENT_KIND_EMOJI, REMINDERS, REMINDER_FA,
+  IMPORTANT_KINDS, IMPORTANT_KIND_FA,
+} from "@/lib";
+import {
+  jalaliToday, jMonthGrid, toGregorian, J_MONTHS, jalaliPartsInTz,
+} from "@/lib/jalali";
+import { faNum } from "@/lib/fa";
+import { cn } from "@/lib";
+
+interface Ev {
+  id: string; title: string; description: string | null; date: string;
+  startTime: string | null; endTime: string | null; location: string | null;
+  kind: string; reminder: string | null; recurrence: string;
+}
+
+interface ImpDate {
+  id: string; title: string; kind: string; date: string; repeatsYearly: boolean; note: string | null;
+}
+
+function isoOf(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+export function CalendarClient() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [tab, setTab] = useState<"month" | "important">("month");
+
+  const today = jalaliToday();
+  const [view, setView] = useState({ jy: today.jy, jm: today.jm });
+  const [selected, setSelected] = useState<string>(isoOf(new Date()));
+
+  const [evModal, setEvModal] = useState(false);
+  const [editing, setEditing] = useState<Ev | null>(null);
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState("SHARED");
+  const [dateIso, setDateIso] = useState(isoOf(new Date()));
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [location, setLocation] = useState("");
+  const [reminder, setReminder] = useState("NONE");
+  const [recurrence, setRecurrence] = useState("NONE");
+
+  const [impModal, setImpModal] = useState(false);
+  const [impTitle, setImpTitle] = useState("");
+  const [impKind, setImpKind] = useState("BIRTHDAY");
+  const [impDate, setImpDate] = useState(isoOf(new Date()));
+
+  const monthStart = useMemo(() => {
+    const g = toGregorian(view.jy, view.jm, 1);
+    return isoOf(g);
+  }, [view]);
+  const monthEnd = useMemo(() => {
+    const grid = jMonthGrid(view.jy, view.jm);
+    const last = [...grid].reverse().find((c) => c !== null)!;
+    return isoOf(toGregorian(last.jy, last.jm, last.jd));
+  }, [view]);
+
+  const eventsQuery = useQuery({
+    queryKey: ["events", monthStart, monthEnd],
+    queryFn: () => api<{ items: Ev[] }>(`/api/events?from=${monthStart}&to=${monthEnd}`),
+  });
+
+  const importantQuery = useQuery({
+    queryKey: ["important-dates"],
+    queryFn: () => api<{ items: ImpDate[] }>("/api/important-dates"),
+    enabled: tab === "important",
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["events"] });
+    qc.invalidateQueries({ queryKey: ["important-dates"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+
+  const saveEvMutation = useMutation({
+    mutationFn: () => {
+      const payload = {
+        title: title.trim(),
+        kind,
+        date: dateIso,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        location: location.trim() || undefined,
+        reminder: reminder === "NONE" ? undefined : reminder,
+        recurrence,
+      };
+      if (editing) return api(`/api/events/${editing.id}`, { method: "PATCH", json: payload });
+      return api("/api/events", { method: "POST", json: payload });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.push(editing ? "رویداد ویرایش شد" : "رویداد ثبت شد", "success");
+      setEvModal(false);
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
+  });
+
+  const deleteEvMutation = useMutation({
+    mutationFn: (id: string) => api(`/api/events/${id}`, { method: "DELETE" }),
+    onSuccess: invalidate,
+  });
+
+  const saveImpMutation = useMutation({
+    mutationFn: () => api("/api/important-dates", {
+      method: "POST",
+      json: { title: impTitle.trim(), kind: impKind, date: impDate },
+    }),
+    onSuccess: () => {
+      invalidate();
+      toast.push("مناسبت ثبت شد", "success");
+      setImpModal(false);
+      setImpTitle("");
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
+  });
+
+  async function askDeleteEv(e: Ev) {
+    const yes = await confirm({
+      title: "حذف رویداد",
+      body: `«${e.title}» حذف شود؟`,
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (yes) deleteEvMutation.mutate(e.id);
+  }
+
+  // month events by iso date
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, Ev[]>();
+    for (const e of eventsQuery.data?.items ?? []) {
+      const iso = isoOf(new Date(e.date));
+      if (!map.has(iso)) map.set(iso, []);
+      map.get(iso)!.push(e);
+    }
+    return map;
+  }, [eventsQuery.data]);
+
+  const grid = jMonthGrid(view.jy, view.jm);
+  const todayIso = isoOf(new Date());
+  const selectedEvents = eventsByDate.get(selected) ?? [];
+
+  function openCreate(iso?: string) {
+    setEditing(null);
+    setTitle(""); setKind("SHARED"); setStartTime(""); setEndTime(""); setLocation(""); setReminder("NONE"); setRecurrence("NONE");
+    setDateIso(iso ?? selected);
+    setEvModal(true);
+  }
+
+  function openEdit(e: Ev) {
+    setEditing(e);
+    setTitle(e.title); setKind(e.kind);
+    setDateIso(isoOf(new Date(e.date)));
+    setStartTime(e.startTime ?? ""); setEndTime(e.endTime ?? "");
+    setLocation(e.location ?? ""); setReminder(e.reminder ?? "NONE"); setRecurrence(e.recurrence);
+    setEvModal(true);
+  }
+
+  function shiftMonth(delta: number) {
+    setView((v) => {
+      let jm = v.jm + delta;
+      let jy = v.jy;
+      if (jm > 12) { jm = 1; jy += 1; }
+      if (jm < 1) { jm = 12; jy -= 1; }
+      return { jy, jm };
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-[18px] font-black">تقویم مشترک</h1>
+        <div className="flex gap-2">
+          {tab === "important" && <Button size="sm" variant="secondary" onClick={() => setImpModal(true)}>+ مناسبت</Button>}
+          <Button size="sm" onClick={() => openCreate()}>+ رویداد</Button>
+        </div>
+      </div>
+
+      <SegmentedTabs
+        value={tab}
+        onChange={(v) => setTab(v as typeof tab)}
+        items={[
+          { id: "month", label: "ماه" },
+          { id: "important", label: "مناسبت‌ها" },
+        ]}
+      />
+
+      {tab === "month" && (
+        <>
+          {/* month header */}
+          <div className="flex items-center justify-between">
+            <button onClick={() => shiftMonth(-1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه قبل">›</button>
+            <div className="text-[14px] font-black">{J_MONTHS[view.jm - 1]} {faNum(view.jy)}</div>
+            <button onClick={() => shiftMonth(1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه بعد">‹</button>
+          </div>
+
+          {eventsQuery.isLoading ? (
+            <SkeletonBlock className="h-72 w-full" />
+          ) : (
+            <>
+              {/* weekday header */}
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-ink-faint">
+                {["ش", "ی", "د", "س", "چ", "پ", "ج"].map((d) => <div key={d} className="py-1">{d}</div>)}
+              </div>
+              {/* grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {grid.map((cell, i) => {
+                  if (!cell) return <div key={i} className="aspect-square" />;
+                  const iso = isoOf(toGregorian(cell.jy, cell.jm, cell.jd));
+                  const dayEvents = eventsByDate.get(iso) ?? [];
+                  const isToday = iso === todayIso;
+                  const isSelected = iso === selected;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setSelected(iso)}
+                      onDoubleClick={() => openCreate(iso)}
+                      className={cn(
+                        "relative flex aspect-square flex-col items-center justify-center rounded-lg border text-[12px] transition-colors",
+                        isSelected ? "border-ink bg-paper-soft font-bold" : "border-transparent hover:bg-white",
+                        isToday && "ring-1 ring-ink",
+                      )}
+                      aria-label={`${cell.jd} ${J_MONTHS[cell.jm - 1]}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span className={isToday ? "flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white" : ""}>{faNum(cell.jd)}</span>
+                      {dayEvents.length > 0 && (
+                        <span className="absolute bottom-1 flex gap-0.5" aria-hidden>
+                          {dayEvents.slice(0, 3).map((e) => (
+                            <span key={e.id} className="h-1.5 w-1.5 rounded-full bg-ink" />
+                          ))}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* selected day events */}
+              <Card>
+                <CardHeader
+                  title={(() => {
+                    const p = jalaliPartsInTz(new Date(selected + "T12:00:00+03:30"));
+                    return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]}`;
+                  })()}
+                  action={<Button size="sm" variant="ghost" onClick={() => openCreate(selected)}>+ افزودن</Button>}
+                />
+                <CardBody className="space-y-2">
+                  {selectedEvents.length === 0 ? (
+                    <EmptyState
+                      icon={<span aria-hidden>📅</span>}
+                      title="رویدادی در این روز نیست"
+                      description="برای افزودن، دکمه بالا یا دابل‌کلیک روی روز را بزنید."
+                      compact
+                    />
+                  ) : (
+                    selectedEvents.map((e) => (
+                      <div key={e.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2">
+                        <span className="text-[18px]" aria-hidden>{EVENT_KIND_EMOJI[e.kind]}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-bold">{e.title}</div>
+                          <div className="text-[11px] text-ink-faint">
+                            {EVENT_KIND_FA[e.kind]}
+                            {e.startTime ? ` · ${e.startTime}${e.endTime ? ` تا ${e.endTime}` : ""}` : ""}
+                            {e.location ? ` · ${e.location}` : ""}
+                            {e.recurrence !== "NONE" ? " · تکرارشونده" : ""}
+                            {e.reminder && e.reminder !== "NONE" ? ` · ${REMINDER_FA[e.reminder]}` : ""}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <button onClick={() => openEdit(e)} className="rounded p-1 text-ink-faint hover:bg-paper-soft hover:text-ink" aria-label="ویرایش">✏️</button>
+                          <button onClick={() => askDeleteEv(e)} className="rounded p-1 text-ink-faint hover:bg-red-50 hover:text-red-600" aria-label="حذف">🗑️</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardBody>
+              </Card>
+            </>
+          )}
+        </>
+      )}
+
+      {tab === "important" && (
+        <div className="space-y-2">
+          {importantQuery.isLoading ? (
+            <div className="space-y-2"><SkeletonBlock className="h-16" /><SkeletonBlock className="h-16" /></div>
+          ) : (importantQuery.data?.items.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={<span aria-hidden>🎂</span>}
+              title="مناسبتی ثبت نشده"
+              description="تولدها و سالگردها را اضافه کنید تا یادآوری‌شان را ببینید."
+              action={<Button size="sm" onClick={() => setImpModal(true)}>+ مناسبت</Button>}
+            />
+          ) : (
+            importantQuery.data!.items.map((d) => {
+              const p = jalaliPartsInTz(new Date(d.date));
+              return (
+                <Card key={d.id} className="flex items-center gap-3 p-3">
+                  <span className="text-[20px]" aria-hidden>{d.kind === "BIRTHDAY" ? "🎂" : d.kind === "WEDDING" ? "💍" : d.kind === "ANNIVERSARY" ? "💞" : "📌"}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-bold">{d.title}</div>
+                    <div className="text-[11px] text-ink-faint">
+                      {IMPORTANT_KIND_FA[d.kind]} · {faNum(p.jd)} {J_MONTHS[p.jm - 1]}
+                      {d.repeatsYearly ? " · هر سال" : ""}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* event modal */}
+      <Modal
+        open={evModal}
+        onClose={() => setEvModal(false)}
+        title={editing ? "ویرایش رویداد" : "رویداد جدید"}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setEvModal(false)}>انصراف</Button>
+            <Button loading={saveEvMutation.isPending} disabled={!title.trim()} onClick={() => saveEvMutation.mutate()}>ذخیره</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً شام خارج از خانه" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <Select value={kind} onChange={setKind} options={EVENT_KINDS.map((k) => ({ value: k, label: `${EVENT_KIND_EMOJI[k]} ${EVENT_KIND_FA[k]}` }))} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
+              <div className="text-[13px]">{(() => {
+                const p = jalaliPartsInTz(new Date(dateIso + "T12:00:00+03:30"));
+                return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
+              })()}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">شروع</label>
+              <TimePicker value={startTime} onChange={setStartTime} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">پایان</label>
+              <TimePicker value={endTime} onChange={setEndTime} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">یادآور</label>
+              <Select value={reminder} onChange={setReminder} options={REMINDERS.map((r) => ({ value: r, label: REMINDER_FA[r] }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">مکان (اختیاری)</label>
+              <input value={location} onChange={(e) => setLocation(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً کافه جام" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تکرار</label>
+              <Select value={recurrence} onChange={setRecurrence} options={[
+                { value: "NONE", label: "بدون تکرار" },
+                { value: "DAILY", label: "روزانه" },
+                { value: "WEEKLY", label: "هفتگی" },
+                { value: "MONTHLY", label: "ماهانه" },
+              ]} />
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* important date modal */}
+      <Modal
+        open={impModal}
+        onClose={() => setImpModal(false)}
+        title="مناسبت جدید"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setImpModal(false)}>انصراف</Button>
+            <Button loading={saveImpMutation.isPending} disabled={!impTitle.trim()} onClick={() => saveImpMutation.mutate()}>ثبت</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input value={impTitle} onChange={(e) => setImpTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً تولد سارا" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <Select value={impKind} onChange={setImpKind} options={IMPORTANT_KINDS.map((k) => ({ value: k, label: IMPORTANT_KIND_FA[k] }))} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
+              <div className="pt-2 text-[13px]">{(() => {
+                const p = jalaliPartsInTz(new Date(impDate + "T12:00:00+03:30"));
+                return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
+              })()}</div>
+            </div>
+          </div>
+          <input type="date" value={impDate} onChange={(e) => setImpDate(e.target.value)} className="hidden" aria-hidden />
+        </div>
+      </Modal>
+    </div>
+  );
+}

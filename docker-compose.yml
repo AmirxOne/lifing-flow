@@ -1,0 +1,27 @@
+name: lifingflow
+
+# LifeFlow dev infrastructure — COMPLETELY SEPARATE from MeetingHub.
+# Own postgres on port 5433 (meetinghub uses 5432), own network, own volume.
+# No shared services, no shared networks, no references to meetinghub.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lifingflow-postgres-1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lifingflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifingflow}
+      POSTGRES_DB: lifingflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifingflow -d lifingflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

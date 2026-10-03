@@ -1,0 +1,175 @@
+import type { HTMLAttributes } from "react";
+import { cn } from "@/lib";
+
+export function Card({
+  className,
+  children,
+  ...rest
+}: {
+  className?: string;
+  children: React.ReactNode;
+} & HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("rounded-md border border-line bg-white", className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+export function CardHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-4">
+      <div className="min-w-0">
+        <h3 className="text-[14px] font-bold">{title}</h3>
+        {subtitle && <div className="mt-0.5 text-[12px] leading-5 text-ink-soft">{subtitle}</div>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+export function CardBody({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return <div className={cn("p-5", className)}>{children}</div>;
+}
+
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  icon?: React.ReactNode;
+  tone?: "default" | "success" | "danger" | "warn";
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[12px] text-ink-soft">{label}</p>
+          <p
+            className={cn(
+              "mt-1.5 text-2xl font-bold",
+              tone === "success" && "text-emerald-600",
+              tone === "danger" && "text-red-600",
+              tone === "warn" && "text-amber-600",
+            )}
+          >
+            {value}
+          </p>
+          {hint && <p className="mt-1 text-[11px] text-ink-faint">{hint}</p>}
+        </div>
+        {icon && <div className="text-ink-faint">{icon}</div>}
+      </div>
+    </Card>
+  );
+}
+
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  compact = false,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "relative flex flex-col items-center justify-center gap-2 px-6 text-center " +
+        (compact ? "py-8" : "py-14")
+      }
+    >
+      {/* هاله‌ی نرم پشت آیکون */}
+      <div className="relative mb-3 flex items-center justify-center">
+        <div className="absolute size-16 rounded-full bg-paper-soft" />
+        <div className="absolute size-16 animate-pulse rounded-full bg-paper-soft/60" style={{ animationDuration: "3s" }} />
+        <div className="relative flex size-12 items-center justify-center rounded-2xl border border-line bg-white text-ink-faint shadow-sm">
+          {icon ?? <EmptyGlyph />}
+        </div>
+      </div>
+      <p className="text-[14px] font-semibold text-ink">{title}</p>
+      {description && <p className="max-w-sm text-[12px] leading-6 text-ink-soft">{description}</p>}
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
+}
+
+/** آیکون خالی پیش‌فرض — نقطه‌چین دایره‌ای با خط میانی، سبک مینیمال */
+function EmptyGlyph() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2.5 3" strokeLinecap="round" />
+      <path d="M8.5 12h7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SkeletonBlock({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return <div className={cn("skeleton", className)} style={style} />;
+}
+
+/** Row skeleton: avatar circle + two text lines — mirrors list rows everywhere. */
+export function SkeletonRow({ withBadge = true }: { withBadge?: boolean }) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-3.5">
+      <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+      <div className="flex-1 space-y-1.5">
+        <div className="skeleton h-3.5 w-1/2" />
+        <div className="skeleton h-3 w-1/3" />
+      </div>
+      {withBadge && <div className="skeleton h-5 w-16 rounded-full" />}
+    </div>
+  );
+}
+
+/** Table skeleton: header + n rows of cells matching column count. */
+export function SkeletonTable({ rows = 6, cols = 5 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="overflow-hidden">
+      <div className="flex gap-4 border-b border-line bg-paper-soft/50 px-4 py-2.5">
+        {Array.from({ length: cols }).map((_, i) => (
+          <div key={i} className="skeleton h-3 flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex items-center gap-4 border-b border-line px-4 py-3 last:border-0">
+          {Array.from({ length: cols }).map((_, c) => (
+            <div
+              key={c}
+              className={cn("skeleton h-3.5", c === 0 ? "w-28" : "flex-1")}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
