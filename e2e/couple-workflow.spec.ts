@@ -57,8 +57,7 @@ test.describe("Full couple workflow E2E (the golden path)", () => {
 
     // ── A logs a SHARED mood ──
     await pageA.goto("/relationship");
-    await pageA.locator("button[role='radio']").first().click(); // 😊 great
-    await pageA.getByRole("button", { name: "👁️ مشترک با همسر" }).click(); // make it SHARED
+    await pageA.locator("button[role='radio']").first().click(); // 😊 great — always shared now
     await pageA.getByRole("button", { name: "ثبت", exact: true }).click();
     await expect(pageA.getByText("حال‌وهوای امروز ثبت شد")).toBeVisible({ timeout: 15_000 });
 

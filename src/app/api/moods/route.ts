@@ -10,7 +10,7 @@ const moodSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاریخ نامعتبر است"),
   mood: z.enum(MOODS),
   note: z.string().trim().max(500).optional(),
-  visibility: z.enum(VISIBILITIES).default("SHARED"),
+  visibility: z.literal("SHARED").optional(), // private mode removed — always shared
 });
 
 export async function GET(req: NextRequest) {
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         },
       } : {}),
       // PRIVACY: partner sees only SHARED rows; own rows always visible
-      OR: [{ userId: user.id }, { visibility: "SHARED" }],
+      // all entries shared by design (no private mode)
     };
 
     const items = await prisma.mood.findMany({

@@ -159,49 +159,40 @@ describe("Validation edge cases", () => {
   });
 });
 
-describe("Privacy: PRIVATE moods/checkins never cross", () => {
-  it("partner cannot see owner's private mood (same household, server-enforced)", async () => {
+describe("Moods/checkins: fully shared (no private mode)", () => {
+  it("partner sees owner's mood entry", async () => {
     const { owner, partner } = await makeHousehold(uniqueSuffix());
-    const marker = `sadsecret${uniqueSuffix()}`;
+    const marker = `sharedmood${uniqueSuffix()}`;
 
     await call("/api/moods", {
       method: "POST",
-      json: { date: "2026-10-03", mood: "SAD", note: marker, visibility: "PRIVATE" },
-    }, owner.cookie);
-
-    const partnerView = await call<{ items: { note: string | null }[] }>("/api/moods", {}, partner.cookie);
-    expect(partnerView.status).toBe(200);
-    expect(partnerView.body.data!.items.some((m) => m.note === marker)).toBe(false);
-
-    // owner still sees own
-    const ownView = await call<{ items: { note: string | null }[] }>("/api/moods", {}, owner.cookie);
-    expect(ownView.body.data!.items.some((m) => m.note === marker)).toBe(true);
-  });
-
-  it("partner cannot see owner's private check-in", async () => {
-    const { owner, partner } = await makeHousehold(uniqueSuffix());
-    const marker = `needsecret${uniqueSuffix()}`;
-
-    await call("/api/checkins", {
-      method: "POST",
-      json: { date: "2026-10-03", need: marker, visibility: "PRIVATE" },
-    }, owner.cookie);
-
-    const partnerView = await call<{ items: { need: string | null }[] }>("/api/checkins", {}, partner.cookie);
-    expect(partnerView.body.data!.items.some((c) => c.need === marker)).toBe(false);
-  });
-
-  it("shared mood IS visible to partner", async () => {
-    const { owner, partner } = await makeHousehold(uniqueSuffix());
-    const marker = `happyshare${uniqueSuffix()}`;
-
-    await call("/api/moods", {
-      method: "POST",
-      json: { date: "2026-10-03", mood: "GREAT", note: marker, visibility: "SHARED" },
+      json: { date: "2026-10-03", mood: "SAD", note: marker },
     }, owner.cookie);
 
     const partnerView = await call<{ items: { note: string | null }[] }>("/api/moods", {}, partner.cookie);
     expect(partnerView.body.data!.items.some((m) => m.note === marker)).toBe(true);
+  });
+
+  it("partner sees owner's check-in", async () => {
+    const { owner, partner } = await makeHousehold(uniqueSuffix());
+    const marker = `sharedneed${uniqueSuffix()}`;
+
+    await call("/api/checkins", {
+      method: "POST",
+      json: { date: "2026-10-03", need: marker },
+    }, owner.cookie);
+
+    const partnerView = await call<{ items: { need: string | null }[] }>("/api/checkins", {}, partner.cookie);
+    expect(partnerView.body.data!.items.some((c) => c.need === marker)).toBe(true);
+  });
+
+  it("PRIVATE visibility value is rejected by schema", async () => {
+    const { owner } = await makeHousehold(uniqueSuffix());
+    const res = await call("/api/moods", {
+      method: "POST",
+      json: { date: "2026-10-03", mood: "SAD", visibility: "PRIVATE" },
+    }, owner.cookie);
+    expect(res.status).toBe(400);
   });
 });
 
@@ -304,10 +295,6 @@ describe("Business workflows end-to-end", () => {
     await call("/api/expenses", {
       method: "POST",
       json: { title: "لاگ تست", amount: 1000, category: "OTHER", date: "2026-10-03", payerId: owner.id },
-    }, owner.cookie);
-    await call("/api/moods", {
-      method: "POST",
-      json: { date: "2026-10-03", mood: "SAD", visibility: "PRIVATE" },
     }, owner.cookie);
 
     const feed = await call<{ items: { summary: string }[] }>("/api/activities", {}, owner.cookie);

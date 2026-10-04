@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/components/ui/card";
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
-import { MOODS, MOOD_FA, MOOD_EMOJI, VISIBILITY_FA } from "@/lib";
+import { MOODS, MOOD_FA, MOOD_EMOJI } from "@/lib";
 import { formatJalali } from "@/lib/jalali";
 import { cn } from "@/lib";
 
@@ -35,12 +35,12 @@ export function RelationshipClient() {
 
   const [mood, setMood] = useState("");
   const [moodNote, setMoodNote] = useState("");
-  const [moodVisibility, setMoodVisibility] = useState<"PRIVATE" | "SHARED">("SHARED");
+
 
   const [happy, setHappy] = useState("");
   const [bothered, setBothered] = useState("");
   const [need, setNeed] = useState("");
-  const [checkinVisibility, setCheckinVisibility] = useState<"PRIVATE" | "SHARED">("SHARED");
+
 
   const moodsQuery = useQuery({
     queryKey: ["moods"],
@@ -62,7 +62,7 @@ export function RelationshipClient() {
   const moodMutation = useMutation({
     mutationFn: () => api("/api/moods", {
       method: "POST",
-      json: { date: todayIso(), mood, note: moodNote.trim() || undefined, visibility: moodVisibility },
+      json: { date: todayIso(), mood, note: moodNote.trim() || undefined, visibility: "SHARED" },
     }),
     onSuccess: () => {
       invalidate();
@@ -80,7 +80,7 @@ export function RelationshipClient() {
         happy: happy.trim() || undefined,
         bothered: bothered.trim() || undefined,
         need: need.trim() || undefined,
-        visibility: checkinVisibility,
+        visibility: "SHARED",
       },
     }),
     onSuccess: () => {
@@ -138,34 +138,19 @@ export function RelationshipClient() {
                 className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft"
                 placeholder="چند کلمه درباره امروز… (اختیاری)"
               />
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  {(["SHARED", "PRIVATE"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setMoodVisibility(v)}
-                      className={cn(
-                        "rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
-                        moodVisibility === v ? "bg-ink text-white" : "bg-paper-soft text-ink-soft",
-                      )}
-                    >
-                      {v === "PRIVATE" ? "🔒 خصوصی" : "👁️ " + VISIBILITY_FA[v]}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center justify-end">
                 <Button size="sm" loading={moodMutation.isPending} disabled={!mood} onClick={() => moodMutation.mutate()}>
                   ثبت
                 </Button>
               </div>
               <p className="text-[11px] leading-5 text-ink-faint">
-                🔒 حال‌وهوای خصوصی فقط برای خودتان قابل دیدن است — نه از API، نه هیچ‌جا.
               </p>
             </CardBody>
           </Card>
 
           {/* shared recent moods */}
           <Card>
-            <CardHeader title="حال‌وهوای اخیر" subtitle="فقط موارد مشترک" />
+            <CardHeader title="حال‌وهوای اخیر" />
             <CardBody className="space-y-2">
               {moodsQuery.isLoading ? (
                 <SkeletonBlock className="h-16" />
@@ -178,7 +163,6 @@ export function RelationshipClient() {
                     <div className="min-w-0 flex-1">
                       <div className="text-[12px] font-bold">
                         {m.user.id === me?.id ? "من" : m.user.fullName}
-                        {m.visibility === "PRIVATE" && <span className="mr-1.5 badge badge-gray">🔒 خصوصی</span>}
                       </div>
                       <div className="text-[11px] text-ink-faint">
                         {formatJalali(new Date(m.date))} · {MOOD_FA[m.mood]}
@@ -210,20 +194,7 @@ export function RelationshipClient() {
               <textarea id="امروز چه چیزی از همسرت نیاز داری؟" value={need} onChange={(e) => setNeed(e.target.value)} rows={2} className="w-full rounded-md border border-line px-3 py-2 text-[13px] outline-none focus:border-ink-soft" />
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                {(["SHARED", "PRIVATE"] as const).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setCheckinVisibility(v)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
-                      checkinVisibility === v ? "bg-ink text-white" : "bg-paper-soft text-ink-soft",
-                    )}
-                  >
-                    {v === "PRIVATE" ? "🔒 خصوصی" : "👁️ " + VISIBILITY_FA[v]}
-                  </button>
-                ))}
-              </div>
+              
               <Button
                 size="sm"
                 loading={checkinMutation.isPending}
@@ -251,7 +222,6 @@ export function RelationshipClient() {
                   <div className="flex items-center justify-between">
                     <span className="text-[12px] font-bold">
                       {c.user.id === me?.id ? "من" : c.user.fullName}
-                      {c.visibility === "PRIVATE" && <span className="mr-1.5 badge badge-gray">🔒 خصوصی</span>}
                     </span>
                     <span className="text-[11px] text-ink-faint">{formatJalali(new Date(c.date))}</span>
                   </div>

@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Card, EmptyState, SkeletonBlock } from "@/components/ui/card";
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { SHOP_CATEGORIES, SHOP_CATEGORY_FA, PRIORITIES, PRIORITY_FA, jalaliMonthKey } from "@/lib";
 import { J_MONTHS } from "@/lib/jalali";
 import { faNum } from "@/lib/fa";
@@ -302,7 +303,14 @@ export function ShoppingClient() {
             ]}
           />
 
-      <Select value={categoryFilter} onChange={setCategoryFilter} options={catOptions} />
+      {page === "list" && (
+        <FilterPanel
+          activeCount={categoryFilter ? 1 : 0}
+          onReset={() => setCategoryFilter("")}
+        >
+          <Select value={categoryFilter} onChange={setCategoryFilter} options={catOptions} />
+        </FilterPanel>
+      )}
 
       {listQuery.isLoading ? (
         <div className="space-y-2"><SkeletonBlock className="h-14" /><SkeletonBlock className="h-14" /><SkeletonBlock className="h-14" /></div>

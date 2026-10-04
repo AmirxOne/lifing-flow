@@ -11,7 +11,7 @@ const checkinSchema = z.object({
   happy: z.string().trim().max(500).optional(),
   bothered: z.string().trim().max(500).optional(),
   need: z.string().trim().max(500).optional(),
-  visibility: z.enum(VISIBILITIES).default("SHARED"),
+  visibility: z.literal("SHARED").optional(), // private mode removed — always shared
 });
 
 export async function GET(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         },
       } : {}),
       // PRIVACY: partner sees only SHARED rows
-      OR: [{ userId: user.id }, { visibility: "SHARED" }],
+      // all entries shared by design (no private mode)
     };
 
     const items = await prisma.checkIn.findMany({

@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/ui/confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { FilterPanel } from "@/components/ui/filter-panel";
 import { FaInput } from "@/components/ui/fa-input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/components/ui/card";
@@ -220,9 +221,12 @@ export function FinanceClient() {
             </CardBody>
           </Card>
 
-          {/* filters */}
-          <Card>
-            <CardBody className="space-y-3">
+          {/* filters — collapsible */}
+          <FilterPanel
+            activeCount={[category, payerFilter, q.trim(), from, to].filter(Boolean).length}
+            onReset={() => { setCategory(""); setPayerFilter(""); setQ(""); setFrom(""); setTo(""); }}
+          >
+            <div className="space-y-2">
               <input
                 type="search"
                 value={q}
@@ -242,8 +246,8 @@ export function FinanceClient() {
                   </div>
                 </div>
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </FilterPanel>
 
           {/* summary */}
           {listQuery.data && (
