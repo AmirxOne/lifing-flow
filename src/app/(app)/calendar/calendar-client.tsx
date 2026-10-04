@@ -85,6 +85,7 @@ export function CalendarClient() {
       phase: "PERIOD" | "FOLLICULAR" | "OVULATION_WINDOW" | "LUTEAL" | "UNKNOWN";
       dayOfCycle: number | null;
     };
+    pmsDays?: string[];
     forecasts?: string[];
     lastVariance?: { daysLate: number; lengthDiff: number } | null;
     report?: { id: string; start: string; end: string; len: number; gap: number | null; daysLate: number | null }[];
@@ -166,6 +167,13 @@ export function CalendarClient() {
         d = new Date(d.getTime() + 86_400_000);
       }
     }
+    return set;
+  }, [cycleQuery.data]);
+
+  // PMS days (computed): the ~4 days before each forecast start
+  const pmsDaySet = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of cycleQuery.data?.pmsDays ?? []) set.add(d);
     return set;
   }, [cycleQuery.data]);
 
@@ -326,6 +334,9 @@ export function CalendarClient() {
               {openPeriod && (
                 <div className="text-[12px] text-rose-800">دوره جاری از {formatJalali(new Date(openPeriod.start + "T12:00:00+03:30"))} شروع شده — دکمه «پایان یافت» را وقتی تمام شد بزنید.</div>
               )}
+              <div className="text-[10.5px] leading-5 text-ink-faint">
+                کافی است اولین روز قاعدگی را ثبت کنید (مثلاً «امروز روز ۲۸ام بود») — طول دوره و پیش‌بینی ماه بعد خودکار محاسبه می‌شود.
+              </div>
               {(() => {
                 const v = cycleQuery.data?.lastVariance;
                 if (!v || (v.daysLate === 0 && v.lengthDiff === 0)) return null;
@@ -389,6 +400,7 @@ export function CalendarClient() {
                   const isSelected = iso === selected;
                   const isPeriodDay = periodDaySet.has(iso);
                   const isPredictedDay = predictedDaySet.has(iso);
+                  const isPmsDay = !isPeriodDay && !isPredictedDay && pmsDaySet.has(iso);
                   return (
                     <button
                       key={i}
@@ -400,8 +412,9 @@ export function CalendarClient() {
                         isToday && "ring-1 ring-ink",
                         isPeriodDay && "bg-rose-200/80",
                         isPredictedDay && "border-2 border-dashed border-rose-400",
+                        isPmsDay && "border-dashed border-amber-400 bg-amber-50",
                       )}
-                      aria-label={`${cell.jd} ${J_MONTHS[cell.jm - 1]}${isPeriodDay ? " — دوران قاعدگی" : isPredictedDay ? " — پیش‌بینی" : ""}`}
+                      aria-label={`${cell.jd} ${J_MONTHS[cell.jm - 1]}${isPeriodDay ? " — دوران قاعدگی" : isPredictedDay ? " — پیش‌بینی دوره" : isPmsDay ? " — احتمال PMS" : ""}`}
                       aria-pressed={isSelected}
                     >
                       <span className={cn(
@@ -431,6 +444,10 @@ export function CalendarClient() {
                 <span className="flex items-center gap-1.5">
                   <span className="h-4 w-4 rounded-md border-2 border-dashed border-rose-400" aria-hidden></span>
                   پیش‌بینی دوره بعد
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-4 w-4 rounded-md border border-dashed border-amber-400 bg-amber-50" aria-hidden></span>
+                  احتمال PMS (قبل از دوره)
                 </span>
               </div>
 

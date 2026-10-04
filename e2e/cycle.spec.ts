@@ -91,3 +91,33 @@ test.describe("Cycle forecasts & report", () => {
     await expect(page.getByText("میانگین چرخه")).toBeVisible({ timeout: 15_000 });
   });
 });
+
+test.describe("PMS window", () => {
+  test("PMS days render amber before the forecast start", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("ایمیل").fill("test-owner@example.com");
+    await page.getByLabel("رمز عبور").fill("Pass1234");
+    await page.getByRole("button", { name: "ورود" }).click();
+    await page.waitForURL("**/dashboard", { timeout: 30_000 });
+
+    // seed a realistic history via API (28-day cycles, last start ~3 weeks ago)
+    for (const [s, e] of [["2026-07-18", "2026-07-22"], ["2026-08-15", "2026-08-19"], ["2026-09-12", "2026-09-16"]]) {
+      await page.request.post("/api/cycle", { data: { start: s, end: e } });
+    }
+
+    await page.goto("/calendar");
+    await expect(page.getByText("دوران قاعدگی").first()).toBeVisible({ timeout: 20_000 });
+
+    // legend mentions PMS
+    await expect(page.getByText("احتمال PMS").first()).toBeVisible({ timeout: 10_000 });
+
+    // at least one amber PMS cell exists in the grid
+    const pmsCell = page.locator('.grid button', { hasText: "" }).filter({ has: page.locator("[aria-label*='PMS']") });
+    const count = await page.locator(".grid button[aria-label*='PMS']").count();
+    expect(count).toBeGreaterThan(0);
+
+    // forecast cells exist too
+    const fc = await page.locator(".grid button[aria-label*='پیش‌بینی دوره']").count();
+    expect(fc).toBeGreaterThan(0);
+  });
+});

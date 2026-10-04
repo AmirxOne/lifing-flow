@@ -75,10 +75,18 @@ export async function GET() {
 
     // forecasts: next up-to-3 predicted starts (covers following months)
     const forecasts: string[] = [];
+    // PMS window: the few days right BEFORE each predicted start
+    const PMS_DAYS = 4;
+    const pmsDays: string[] = [];
     if (lastStart !== null) {
       for (let n = 1; n <= 3; n++) {
-        const f = new Date(lastStart + cycleLen * n * DAY).toISOString().slice(0, 10);
+        const fMs = lastStart + cycleLen * n * DAY;
+        const f = new Date(fMs).toISOString().slice(0, 10);
         if (toUtc(f) >= today) forecasts.push(f);
+        for (let k = PMS_DAYS; k >= 1; k--) {
+          const d = new Date(fMs - k * DAY).toISOString().slice(0, 10);
+          if (toUtc(d) >= today) pmsDays.push(d);
+        }
       }
     }
 
@@ -110,6 +118,7 @@ export async function GET() {
 
     return ok({
       forecasts,
+      pmsDays,
       lastVariance,
       report,
       periods: periods.map((p) => ({
