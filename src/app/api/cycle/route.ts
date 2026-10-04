@@ -140,6 +140,12 @@ export async function POST(req: NextRequest) {
       return fail(400, "تاریخ پایان نمی‌تواند قبل از شروع باشد", "BAD_RANGE");
     }
 
+    // a period can only be logged once it has STARTED — no future dates.
+    // (future predictions are computed forecasts, never records)
+    if (toUtc(d.start) > todayUtc()) {
+      return fail(400, "نمی‌توان دوره‌ای با تاریخ آینده ثبت کرد — پیش‌بینی‌ها خودکار محاسبه می‌شوند", "FUTURE_DATE");
+    }
+
     // one open period at a time — close any ongoing one first
     // (never before its own start; guard against out-of-order logging)
     const newStartMs = startOfDayUtcFromIso(d.start).getTime();

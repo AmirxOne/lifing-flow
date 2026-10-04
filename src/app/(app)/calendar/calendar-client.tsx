@@ -619,28 +619,95 @@ export function CalendarClient() {
               میانگین چرخه: <b>{faNum(cycleQuery.data.stats.cycleLen)} روز</b> · میانگین طول دوره: <b>{faNum(cycleQuery.data.stats.periodLen)} روز</b>
             </div>
           )}
-          {(cycleQuery.data?.report ?? []).slice().reverse().map((r) => (
-            <div key={r.id} className="flex items-start justify-between gap-2 rounded-lg border border-line px-3 py-2">
-              <div>
-                <div className="text-[12px] font-bold">{formatJalali(new Date(r.start + "T12:00:00+03:30"))}</div>
-                <div className="text-[11px] text-ink-faint">تا {formatJalali(new Date(r.end + "T12:00:00+03:30"))} · {faNum(r.len)} روز</div>
-              </div>
-              <div className="text-left text-[11px]">
-                {r.gap != null && <div className="text-ink-soft">فاصله: {faNum(r.gap)} روز</div>}
-                {r.daysLate != null && r.daysLate !== 0 && (
-                  <div className={r.daysLate > 0 ? "text-amber-700" : "text-emerald-700"}>
-                    {r.daysLate > 0 ? `${faNum(r.daysLate)} روز دیرتر` : `${faNum(Math.abs(r.daysLate))} روز زودتر`}
+          {(() => {
+            const all = cycleQuery.data?.report ?? [];
+            const todayIso = isoOf(new Date());
+            const past = all.filter((r) => r.start <= todayIso);
+            const future = all.filter((r) => r.start > todayIso);
+
+            return (
+              <>
+                {/* ── actual periods (happened) ── */}
+                <div className="text-[12px] font-black text-ink">دوره‌های ثبت‌شده ({faNum(past.length)})</div>
+                {past.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11px] text-ink-faint">
+                    هنوز دوره‌ای ثبت نشده است
                   </div>
+                ) : past.slice().reverse().map((r) => (
+                  <div key={r.id} className="flex items-start justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2">
+                    <div>
+                      <div className="text-[12px] font-bold">🌸 {formatJalali(new Date(r.start + "T12:00:00+03:30"))}</div>
+                      <div className="mt-0.5 text-[11px] text-ink-faint">
+                        {r.end ? `تا ${formatJalali(new Date(r.end + "T12:00:00+03:30"))}` : "در جریان"} · {faNum(r.len)} روز
+                      </div>
+                    </div>
+                    <div className="text-left text-[11px]">
+                      {r.gap != null && <div className="text-ink-soft">فاصله با قبل: {faNum(r.gap)} روز</div>}
+                      {r.daysLate != null && r.daysLate !== 0 && (
+                        <div className={r.daysLate > 0 ? "text-amber-700" : "text-emerald-700"}>
+                          {r.daysLate > 0 ? `${faNum(r.daysLate)} روز دیرتر از پیش‌بینی` : `${faNum(Math.abs(r.daysLate))} روز زودتر`}
+                        </div>
+                      )}
+                      {r.daysLate === 0 && <div className="text-emerald-700">سر وقت</div>}
+                      <button
+                        onClick={() => deleteCycleMutation.mutate(r.id)}
+                        className="mt-1 text-ink-faint hover:text-red-600"
+                        aria-label="حذف دوره"
+                      >🗑️</button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* ── future "periods" — these are actually forecasts saved as records ── */}
+                {future.length > 0 && (
+                  <>
+                    <div className="pt-2 text-[12px] font-black text-ink">از تاریخ به بعد ({faNum(future.length)})</div>
+                    <div className="rounded-lg bg-amber-50 px-3 py-2 text-[10.5px] leading-5 text-amber-800">
+                      ⚠️ این‌ها با تاریخ آینده ثبت شده‌اند و پیش‌بینی محسوب می‌شوند، نه دوره‌ی واقعی.
+                      اگر اشتباه ثبت شده‌اند حذفشان کنید و فقط دوره‌ی رخ‌داده را ثبت کنید.
+                    </div>
+                    {future.slice().reverse().map((r) => (
+                      <div key={r.id} className="flex items-start justify-between gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2">
+                        <div>
+                          <div className="text-[12px] font-bold">{formatJalali(new Date(r.start + "T12:00:00+03:30"))}</div>
+                          <div className="mt-0.5 text-[11px] text-ink-faint">
+                            {r.end ? `تا ${formatJalali(new Date(r.end + "T12:00:00+03:30"))}` : "بدون پایان"} · {faNum(r.len)} روز
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteCycleMutation.mutate(r.id)}
+                          className="text-ink-faint hover:text-red-600"
+                          aria-label="حذف دوره آینده"
+                        >🗑️</button>
+                      </div>
+                    ))}
+                  </>
                 )}
-                {r.daysLate === 0 && <div className="text-emerald-700">سر وقت</div>}
-                <button
-                  onClick={() => deleteCycleMutation.mutate(r.id)}
-                  className="mt-1 text-ink-faint hover:text-red-600"
-                  aria-label="حذف دوره"
-                >🗑️</button>
-              </div>
-            </div>
-          ))}
+
+                {/* ── upcoming forecasts (computed, not records) ── */}
+                {(cycleQuery.data?.forecasts?.length ?? 0) > 0 && cycleQuery.data?.forecasts && cycleQuery.data.stats && (
+                  <>
+                    <div className="pt-2 text-[12px] font-black text-ink">پیش‌بینی دوره‌های بعدی</div>
+                    {cycleQuery.data.forecasts.map((f, i) => {
+                      const first = new Date(f + "T12:00:00+03:30");
+                      const last = new Date(first.getTime() + ((cycleQuery.data.stats.periodLen ?? 5) - 1) * 86_400_000);
+                      return (
+                        <div key={f} className="flex items-start justify-between gap-2 rounded-lg border border-dashed border-rose-300 px-3 py-2">
+                          <div>
+                            <div className="text-[12px] font-bold">دوره‌ی {faNum(i + 1)}م بعدی</div>
+                            <div className="mt-0.5 text-[11px] text-ink-faint">
+                              ~ {formatJalali(first)} تا {formatJalali(last)}
+                            </div>
+                          </div>
+                          <span className="badge badge-gray text-[10px]">پیش‌بینی</span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       </Modal>
 
