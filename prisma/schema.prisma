@@ -91,6 +91,7 @@ model Household {
   dateIdeas       DateIdea[]
   notifications   Notification[]
   activities      Activity[]
+  cyclePeriods CyclePeriod[]
 }
 
 // Household membership invite: single-use, expiring code
@@ -343,6 +344,23 @@ model DateIdea {
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
+}
+
+
+// ───────────────────────────── /Cycle (menstrual) ─────────────────────────────
+// Shared by design: both partners see it — that's the whole point.
+model CyclePeriod {
+  id          String    @id @default(cuid())
+  householdId String
+  start       DateTime  // local midnight of first day
+  end         DateTime? // local midnight of last day (null = ongoing)
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, start])
 }
 
 // ───────────────────────────── /Memories ─────────────────────────────
