@@ -12,6 +12,7 @@ import { MOODS, MOOD_FA, MOOD_EMOJI } from "@/lib";
 import { formatJalali } from "@/lib/jalali";
 import { faNum } from "@/lib/fa";
 import { cn, isoDateInTz } from "@/lib";
+import { faPrice } from "@/lib";
 
 interface MoodRow {
   id: string; date: string; mood: string; note: string | null; visibility: string;
@@ -21,6 +22,15 @@ interface MoodRow {
 interface CheckinRow {
   id: string; date: string; happy: string | null; bothered: string | null; need: string | null; visibility: string;
   user: { id: string; fullName: string; avatarEmoji: string | null };
+}
+
+const SETTING_FA: Record<string, string> = { INDOOR: "🏠 خانگی", OUTDOOR: "🌿 بیرون", ANY: "📅 هر وقت" };
+
+interface ImpDate {
+  id: string; title: string; kind: string; date: string;
+}
+interface DateIdea {
+  id: string; title: string; description: string | null; budget: number | null; setting: string; done: boolean;
 }
 
 interface MeWithPartner {
@@ -95,6 +105,28 @@ export function RelationshipClient() {
     queryKey: ["checkins"],
     queryFn: () => api<{ items: CheckinRow[] }>("/api/checkins"),
     enabled: tab === "checkin" || tab === "history",
+  });
+
+  const impQuery = useQuery({
+    queryKey: ["important-dates"],
+    queryFn: () => api<{ items: ImpDate[] }>("/api/important-dates"),
+  });
+
+  const ideasQuery = useQuery({
+    queryKey: ["date-ideas"],
+    queryFn: () => api<{ items: DateIdea[] }>("/api/date-ideas"),
+  });
+
+  // random date idea
+  const [ideaIdx, setIdeaIdx] = useState(0);
+  const doneIdeaMutation = useMutation({
+    mutationFn: (id: string) => api(`/api/date-ideas?id=${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["date-ideas"] });
+      toast.push("ایده به‌عنوان انجام‌شده حذف شد — خوش گذشت! 🎉", "success");
+      setIdeaIdx(0);
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
   });
 
   const invalidate = () => {
@@ -197,6 +229,83 @@ export function RelationshipClient() {
               )}
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      {/* ── anniversary / days-together card ── */}
+      <Card>
+        <CardHeader title="قلب ما" subtitle="مناسبت‌های عاشقانه" />
+        <CardBody className="space-y-2">
+          {(() => {
+            const anniversaries = (impQuery.data?.items ?? []).filter((i) => i.kind === "ANNIVERSARY" || i.kind === "WEDDING");
+            const today = new Date(todayIso() + "T12:00:00Z");
+            if (anniversaries.length === 0) {
+              return (
+                <div className="rounded-lg border border-dashed border-rose-200 bg-rose-50/50 px-3 py-3 text-center text-[11.5px] leading-5 text-ink-faint">
+                  💞 تاریخ آشنایی یا سالگرد ازدواج را در تب «مناسبت‌ها»ی تقویم ثبت کنید
+                  تا شمارش روزهای کنار هم نمایش داده شود.
+                </div>
+              );
+            }
+            return anniversaries.map((a) => {
+              const start = new Date(isoDateInTz(new Date(a.date)) + "T12:00:00Z");
+              const days = Math.floor((today.getTime() - start.getTime()) / 86_400_000);
+              return (
+                <div key={a.id} className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-2.5">
+                  <div>
+                    <div className="text-[12.5px] font-bold">💞 {a.title}</div>
+                    <div className="mt-0.5 text-[11px] text-ink-faint">شروع از {formatJalali(new Date(isoDateInTz(new Date(a.date)) + "T12:00:00+03:30"))}</div>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[15px] font-black text-rose-600">{faNum(days)}</div>
+                    <div className="text-[10px] text-ink-faint">روز کنار هم</div>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </CardBody>
+      </Card>
+
+      {/* ── next date idea card ── */}
+      <Card>
+        <CardHeader title="ایده‌ی قرار بعدی" subtitle="از لیست ایده‌های دونفره" />
+        <CardBody>
+          {(() => {
+            const ideas = ideasQuery.data?.items ?? [];
+            if (ideas.length === 0) {
+              return (
+                <div className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-[11.5px] leading-5 text-ink-faint">
+                  🎲 هنوز ایده‌ای ندارید — در بخش «ایده‌های قرار» اضافه کنید تا اینجا شافل بشوند.
+                </div>
+              );
+            }
+            const idea = ideas[ideaIdx % ideas.length];
+            return (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-paper-soft px-3.5 py-3">
+                  <div className="text-[13.5px] font-black">{idea.title}</div>
+                  {idea.description && <div className="mt-1 text-[12px] leading-5 text-ink-soft">{idea.description}</div>}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {idea.budget != null && <span className="badge badge-gray">💰 {faPrice(idea.budget)}</span>}
+                    <span className="badge badge-gray">{SETTING_FA[idea.setting] ?? idea.setting}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setIdeaIdx((i) => i + 1)}
+                    className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12px] font-medium text-ink-soft hover:border-ink-soft"
+                  >
+                    🎲 ایده‌ی دیگری بده
+                  </button>
+                  <Button size="sm" variant="secondary" onClick={() => doneIdeaMutation.mutate(idea.id)}>
+                    انجامش کردیم ✓
+                  </Button>
+                </div>
+                <div className="text-[10.5px] text-ink-faint">{faNum(ideas.length)} ایده در لیست</div>
+              </div>
+            );
+          })()}
         </CardBody>
       </Card>
 
