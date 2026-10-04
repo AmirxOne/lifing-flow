@@ -6,7 +6,7 @@ test.describe("Design system laws (LAW: ظاهر = MeetingHub، اعداد = ف�
     await page.getByLabel("ایمیل").fill("test-owner@example.com");
     await page.getByLabel("رمز عبور").fill("Pass1234");
     await page.getByRole("button", { name: "ورود" }).click();
-    await expect(page.getByText("خرید هفتگی سوپرمارکت").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("سفر شمال تابستان").first()).toBeVisible({ timeout: 30_000 }); // seeded goal — always visible
   });
 
   test("no latin digits anywhere on dashboard", async ({ page }) => {
@@ -69,18 +69,14 @@ test.describe("Design system laws (LAW: ظاهر = MeetingHub، اعداد = ف�
 
 test.describe("Loading / empty states", () => {
   test("fresh household sees proper empty states everywhere", async ({ page, browser }) => {
-    const s = `${Date.now().toString(36)}e2e`;
+    const { provisionSoloHousehold } = await import("./helpers");
+    const host = provisionSoloHousehold(`${Date.now().toString(36)}e2e`);
     const ctx = await browser.newContext({ locale: "fa-IR", viewport: { width: 390, height: 844 } });
     const p = await ctx.newPage();
-    await p.goto("/register");
-    await p.getByLabel("نام و نام خانوادگی").fill("خالی");
-    await p.getByLabel("ایمیل").fill(`empty-${s}@example.com`);
+    await p.goto("/login");
+    await p.getByLabel("ایمیل").fill(host.email);
     await p.getByLabel("رمز عبور").fill("Pass1234");
-    await p.getByRole("button", { name: "ساخت حساب" }).click();
-    await p.getByRole("button", { name: "🏡 خانواده جدید بسازم" }).click();
-    await p.getByLabel("نام خانواده").fill(`خالی ${s}`);
-    await p.getByRole("button", { name: "ساخت خانواده" }).click();
-    await p.getByRole("button", { name: "فعلاً بعداً — برو به داشبورد" }).click();
+    await p.getByRole("button", { name: "ورود" }).click();
     await expect(p.getByText("هنوز هزینه‌ای ثبت نشده")).toBeVisible({ timeout: 30_000 });
     await p.goto("/shopping");
     await expect(p.getByText("لیست خرید خالی است")).toBeVisible({ timeout: 20_000 });

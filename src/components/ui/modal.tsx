@@ -62,24 +62,22 @@ export function Modal({
             onClick={backdropGuard}
             className="fixed inset-0 z-50 animate-[lh-fade_.15s_ease-out] bg-black/45"
           />
-          {/* desktop: centered modal / mobile: bottom sheet */}
+          {/* always a bottom sheet — mobile & desktop alike (app shell law) */}
           <div
-            className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+            className="fixed inset-0 z-50 flex items-end justify-center"
             onClick={(e) => { if (e.target === e.currentTarget) backdropGuard(e); }}
           >
-            {/* کشیدن برای بستن فقط روی دستگاه لمسی — روی دسکتاپ با حرکت سریع موس
-                هنگام کلیک، مودال ناگهان بسته می‌شد */}
             <div
               role="dialog"
               aria-modal="true"
               aria-label={title}
               className={cn(
-                "flex max-h-[92dvh] w-full animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] flex-col rounded-t-xl bg-white shadow-2xl sm:max-h-[86vh] sm:rounded-xl",
-                wide ? "sm:max-w-2xl" : "sm:max-w-lg",
+                "flex max-h-[92dvh] w-full max-w-[600px] animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] flex-col rounded-t-xl bg-white shadow-2xl",
+                wide && "sm:max-w-[600px]",
               )}
             >
-              {/* drag handle (mobile affordance) */}
-              <div className="flex justify-center pt-2.5 sm:hidden" aria-hidden>
+              {/* drag handle affordance */}
+              <div className="flex justify-center pt-2.5" aria-hidden>
                 <div className="h-1.5 w-10 rounded-full bg-line" />
               </div>
 
