@@ -45,6 +45,7 @@ model User {
   activities          Activity[]
 
   @@index([householdId])
+  monthlyProvisions MonthlyProvision[] @relation("provisionCreator")
 }
 
 model Session {
@@ -92,6 +93,7 @@ model Household {
   notifications   Notification[]
   activities      Activity[]
   cyclePeriods CyclePeriod[]
+  monthlyProvisions MonthlyProvision[]
 }
 
 // Household membership invite: single-use, expiring code
@@ -346,6 +348,27 @@ model DateIdea {
   @@index([householdId])
 }
 
+
+
+// ───────────────────────────── /Monthly provisions ─────────────────────────────
+// Monthly household staples ("تهیه ماهانه") — each Jalali month has its own list.
+model MonthlyProvision {
+  id          String   @id @default(cuid())
+  householdId String
+  monthKey    String   // "1405-07" (Jalali year-month)
+  title       String
+  quantity    String   @default("1")
+  note        String?
+  status      String   @default("PENDING") // PENDING | BOUGHT
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("provisionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([householdId, monthKey])
+}
 
 // ───────────────────────────── /Cycle (menstrual) ─────────────────────────────
 // Shared by design: both partners see it — that's the whole point.
