@@ -330,9 +330,10 @@ describe("Business workflows end-to-end", () => {
   });
 });
 
-// ── helper: a logged-in user with NO household ──────────────────────────
+// ── helper: a logged-in user with NO household (DB fixture) ─────────────
+import { fixtureHouseholdlessUser } from "./db-fixtures";
 async function makeHouseholdlessUser(suffix = uniqueSuffix()) {
-  const { registerUser } = await import("./helpers");
-  const u = await registerUser(`تنها ${suffix}`, `solo-${suffix}@example.com`);
-  return { owner: u };
+  const u = await fixtureHouseholdlessUser(suffix);
+  const { loginUser } = await import("./helpers");
+  return { owner: { cookie: await loginUser(u.email), id: u.id } };
 }

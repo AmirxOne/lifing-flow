@@ -72,6 +72,15 @@ async function main() {
     householdEmoji: "🌿",
   });
 
+  // Solo owner for invite-flow E2E (household of one — waiting for partner)
+  await upsertUser({
+    email: "test-inviter@example.com",
+    fullName: "دعوت‌کننده تست",
+    avatarEmoji: "💌",
+    householdName: "خانواده دعوت",
+    householdEmoji: "💌",
+  });
+
   // System admin (no household)
   await upsertUser({
     email: "test-admin@example.com",

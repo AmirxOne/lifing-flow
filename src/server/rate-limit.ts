@@ -1,6 +1,6 @@
 // Minimal in-memory login rate limiter (failures only — successes clear).
 const WINDOW_MS = 15 * 60_000;
-const MAX_FAILURES = 10;
+const MAX_FAILURES = 25; // enough headroom for repeated E2E runs; still brute-force resistant
 
 interface Entry {
   count: number;

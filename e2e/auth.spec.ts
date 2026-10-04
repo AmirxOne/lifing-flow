@@ -26,7 +26,8 @@ test.describe("Authentication E2E", () => {
     await page.getByLabel("ایمیل").fill("test-owner@example.com");
     await page.getByLabel("رمز عبور").fill("Pass1234");
     await page.getByRole("button", { name: "ورود" }).click();
-    await expect(page.getByText("خرید هفتگی سوپرمارکت").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("سفر شمال تابستان").first()).toBeVisible({ timeout: 30_000 }); // seeded goal
+    await expect(page.getByText("ظرف‌ها").first()).toBeVisible({ timeout: 10_000 }); // seeded recurring task
     // Persian-only currency: تومان everywhere, no latin digits in prices
     await expect(page.getByText("تومان").first()).toBeVisible();
   });
@@ -41,7 +42,7 @@ test.describe("Authentication E2E", () => {
     await page.getByLabel("ایمیل").fill("test-owner@example.com");
     await page.getByLabel("رمز عبور").fill("Pass1234");
     await page.getByRole("button", { name: "ورود" }).click();
-    await expect(page.getByText("خرید هفتگی سوپرمارکت").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("سفر شمال تابستان").first()).toBeVisible({ timeout: 30_000 });
     // open drawer → logout
     await page.getByRole("button", { name: "بیشتر" }).click();
     await page.getByRole("button", { name: "خروج" }).click();
@@ -50,36 +51,22 @@ test.describe("Authentication E2E", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("register with short password is blocked (native minLength) and shows hint text", async ({ page }) => {
-    await page.goto("/register");
-    await page.getByLabel("نام و نام خانوادگی").fill("تست کوتاه");
-    await page.getByLabel("ایمیل").fill(`short-${suffix()}@example.com`);
-    const pw = page.getByLabel("رمز عبور");
-    await pw.fill("123");
-    // the field carries the min-length contract
-    await expect(pw).toHaveAttribute("minlength", "8");
-    // submit → browser blocks (no navigation away from register)
-    await page.getByRole("button", { name: "ساخت حساب" }).click();
-    await page.waitForTimeout(1500);
-    await expect(page).toHaveURL(/\/register/);
-    // client-side guard message also available in placeholder copy
-    await expect(pw).toBeVisible();
-  });
 });
 
 test.describe("Forgot password E2E", () => {
   test("forgot → on-screen reset link → new password → login", async ({ browser }) => {
     const email = `forgot-e2e-${suffix()}@example.com`;
-    // register in a throwaway context (its session dies with the context)
-    const regCtx = await browser.newContext({ locale: "fa-IR", viewport: { width: 390, height: 844 } });
-    const regPage = await regCtx.newPage();
-    await regPage.goto("/register");
-    await regPage.getByLabel("نام و نام خانوادگی").fill("فراموشکار");
-    await regPage.getByLabel("ایمیل").fill(email);
-    await regPage.getByLabel("رمز عبور").fill("OldPass1234");
-    await regPage.getByRole("button", { name: "ساخت حساب" }).click();
-    await expect(regPage.getByText("سلام")).toBeVisible({ timeout: 20_000 });
-    await regCtx.close();
+    // create the account through the invite flow (the only path) via API
+    const { newInviteCode } = await import("./helpers");
+    const apiCtx = await browser.newContext();
+    const code = await newInviteCode(apiCtx.request);
+    await apiCtx.close();
+    const ctx0 = await browser.newContext();
+    const joinRes = await ctx0.request.post("/api/auth/join", {
+      data: { code, fullName: "فراموشکار", email, password: "OldPass1234" },
+    });
+    expect(joinRes.status()).toBeLessThan(300);
+    await ctx0.close();
 
     // fresh context — no session — sees the login page
     const ctx = await browser.newContext({ locale: "fa-IR", viewport: { width: 390, height: 844 } });

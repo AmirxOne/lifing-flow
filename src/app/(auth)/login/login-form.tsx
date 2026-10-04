@@ -86,8 +86,8 @@ export function LoginForm() {
           </p>
 
           <p className="pt-1 text-center text-[12px] text-ink-soft">
-            حساب ندارید؟{" "}
-            <Link href="/register" className="font-bold text-ink underline underline-offset-4">ثبت‌نام کنید</Link>
+            کد دعوت دارید؟{" "}
+            <Link href="/join" className="font-bold text-ink underline underline-offset-4">به خانواده بپیوندید</Link>
           </p>
         </form>
 

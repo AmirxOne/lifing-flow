@@ -1,7 +1,15 @@
 // Integration helpers — real HTTP against the running dev server (:3300).
-// Uses seed users; each suite creates its own throwaway data where needed.
+// Households come from DB fixtures (registration is closed in production);
+// the invite-code join path is tested through the API itself.
+
+import { fixtureHousehold } from "./db-fixtures";
 
 const BASE = process.env.TEST_BASE ?? "http://localhost:3300";
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __lhXff: string | undefined;
+}
 
 export interface ApiResponse<T = unknown> {
   status: number;
@@ -15,9 +23,13 @@ export async function call<T>(
   cookie?: string,
 ): Promise<ApiResponse<T>> {
   const { json, ...rest } = init;
+  // unique per-process client IP so the server's join/login rate limiter
+  // doesn't accumulate failures across repeated test runs
+  if (!globalThis.__lhXff) globalThis.__lhXff = `10.42.${(Math.random() * 250) | 0}.${(Math.random() * 250) | 0}`;
   const res = await fetch(`${BASE}${path}`, {
     ...rest,
     headers: {
+      "x-forwarded-for": globalThis.__lhXff,
       ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
       ...(cookie ? { cookie } : {}),
       ...rest.headers,
@@ -33,40 +45,35 @@ export async function call<T>(
   return { status: res.status, headers: res.headers, body };
 }
 
-/** Register a fresh user and return their session cookie. */
-export async function registerUser(fullName: string, email: string, password = "Pass1234"): Promise<{ cookie: string; id: string }> {
-  const res = await call<{ id: string }>("/api/auth/register", { method: "POST", json: { fullName, email, password } });
-  if (res.status !== 201 && res.status !== 200) {
-    throw new Error(`register failed ${res.status}: ${JSON.stringify(res.body)}`);
-  }
-  const cookie = extractCookie(res.headers);
-  if (!cookie) throw new Error("no session cookie after register");
-  return { cookie, id: res.body.data!.id };
-}
-
-/** Login a seed user and return their session cookie. */
+/** Login any fixture/seed user and return their session cookie. */
 export async function loginUser(email: string, password = "Pass1234"): Promise<string> {
   const res = await call("/api/auth/login", { method: "POST", json: { email, password } });
   if (res.status !== 200) throw new Error(`login failed ${res.status}: ${JSON.stringify(res.body)}`);
-  const cookie = extractCookie(res.headers);
+  const setCookie = res.headers.get("set-cookie");
+  const cookie = setCookie?.split(";")[0];
   if (!cookie) throw new Error("no session cookie after login");
   return cookie;
 }
 
-function extractCookie(headers: Headers): string | null {
-  const setCookie = headers.get("set-cookie");
-  if (!setCookie) return null;
-  return setCookie.split(";")[0];
+/** Create a partner account through the invite-code flow (production path). */
+export async function joinViaInvite(code: string, fullName: string, email: string, password = "Pass1234"): Promise<{ cookie: string; id: string }> {
+  const res = await call<{ id: string }>("/api/auth/join", { method: "POST", json: { code, fullName, email, password } });
+  if (res.status !== 200 && res.status !== 201) {
+    throw new Error(`join failed ${res.status}: ${JSON.stringify(res.body)}`);
+  }
+  const setCookie = res.headers.get("set-cookie");
+  const cookie = setCookie?.split(";")[0];
+  if (!cookie) throw new Error("no session cookie after join");
+  return { cookie, id: res.body.data!.id };
 }
 
-/** Create an isolated household pair (owner+partner) with unique suffix. */
+/** Cookie-ready isolated household pair (DB fixture + real login). */
 export async function makeHousehold(suffix: string): Promise<{ owner: { cookie: string; id: string }; partner: { cookie: string; id: string } }> {
-  const owner = await registerUser(`مالک ${suffix}`, `it-owner-${suffix}@example.com`);
-  await call("/api/household", { method: "POST", json: { name: `خانواده ${suffix}` } }, owner.cookie);
-  const invite = await call<{ code: string }>("/api/household/invite", { method: "POST", json: {} }, owner.cookie);
-  const partner = await registerUser(`همسر ${suffix}`, `it-partner-${suffix}@example.com`);
-  await call("/api/household/join", { method: "POST", json: { code: invite.body.data!.code } }, partner.cookie);
-  return { owner, partner };
+  const fx = await fixtureHousehold(suffix);
+  return {
+    owner: { cookie: await loginUser(fx.owner.email), id: fx.owner.id },
+    partner: { cookie: await loginUser(fx.partner.email), id: fx.partner.id },
+  };
 }
 
 export function uniqueSuffix(): string {

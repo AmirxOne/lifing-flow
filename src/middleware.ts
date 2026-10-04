@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Edge-safe cookie-presence gate only; real auth in route handlers.
 const PUBLIC_PATHS = [
   "/login",
-  "/register",
+  "/setup",
+  "/join",
   "/forgot-password",
   "/reset-password",
   "/api/auth",

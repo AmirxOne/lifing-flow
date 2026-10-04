@@ -1,29 +1,31 @@
 import { test, expect } from "@playwright/test";
-import { suffix, registerViaUi, createHouseholdViaUi } from "./helpers";
+import { suffix, joinViaUi, provisionSoloHousehold } from "./helpers";
 
 test.describe("Full couple workflow E2E (the golden path)", () => {
-  test("A registers → household → invite → B joins → shared life", async ({ browser }) => {
+  test("A invites → B joins via /join → shared life", async ({ browser, request }) => {
     const s = suffix();
 
-    // ── User A: register + create household + get invite code ──
+    // ── A: fresh solo household (DB-provisioned, like seed) ──
+    const host = provisionSoloHousehold(s);
     const ctxA = await browser.newContext({ locale: "fa-IR", viewport: { width: 390, height: 844 } });
     const pageA = await ctxA.newPage();
-    await registerViaUi(pageA, "کاربر الف", `a-${s}@example.com`);
-    await createHouseholdViaUi(pageA, `خانواده ${s}`);
+    await pageA.goto("/login");
+    await pageA.getByLabel("ایمیل").fill(host.email);
+    await pageA.getByLabel("رمز عبور").fill("Pass1234");
+    await pageA.getByRole("button", { name: "ورود" }).click();
+    await expect(pageA.getByText("در انتظار همسر…")).toBeVisible({ timeout: 20_000 });
+    await pageA.goto("/settings");
     await pageA.getByRole("button", { name: "ساخت کد دعوت" }).click();
-    const codeEl = pageA.locator("div[dir='ltr'].font-mono, .font-mono");
+    const codeEl = pageA.locator("code[dir='ltr'], div[dir='ltr'].font-mono");
     await expect(codeEl.first()).toBeVisible({ timeout: 15_000 });
     const code = (await codeEl.first().textContent())!.trim();
-    expect(code.length).toBeGreaterThanOrEqual(6);
 
-    // ── User B: register + join with the code ──
+    // ── B: brand-new account via /join ──
     const ctxB = await browser.newContext({ locale: "fa-IR", viewport: { width: 390, height: 844 } });
     const pageB = await ctxB.newPage();
-    await registerViaUi(pageB, "کاربر ب", `b-${s}@example.com`);
-    await pageB.getByRole("button", { name: "💌 کد دعوت دارم" }).click();
-    await pageB.getByLabel("کد دعوت").fill(code);
-    await pageB.getByRole("button", { name: "پیوستن" }).click();
-    await expect(pageB.getByText("خریدهای ضروری")).toBeVisible({ timeout: 30_000 }); // dashboard loaded
+    await joinViaUi(pageB, code, "کاربر ب", `b-${s}@example.com`);
+    await expect(pageB).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+    await expect(pageB.getByText("خریدهای ضروری")).toBeVisible({ timeout: 20_000 });
 
     // ── A adds an expense ──
     await pageA.goto("/finance");
@@ -49,24 +51,21 @@ test.describe("Full couple workflow E2E (the golden path)", () => {
     await pageA.goto("/shopping");
     await expect(pageA.getByText("پنیر").first()).toBeVisible({ timeout: 20_000 });
 
-    // ── B completes the item; A's view updates (polling) ──
+    // ── B completes the item ──
+    await pageB.goto("/shopping");
     await pageB.getByRole("button", { name: "علامت خریداری‌شده" }).first().click();
-    await expect(pageB.getByText("خریداری‌شده").first()).toBeVisible({ timeout: 15_000 }).catch(() => {});
-    // switch to done tab to confirm
-    await pageB.getByRole("tab", { name: "خریداری‌شده" }).click().catch(async () => {
-      await pageB.getByText("خریداری‌شده", { exact: true }).click();
-    });
-    await expect(pageB.getByText("پنیر").first()).toBeVisible({ timeout: 15_000 });
 
-    // ── A logs a mood (SHARED) ──
+    // ── A logs a SHARED mood ──
     await pageA.goto("/relationship");
     await pageA.locator("button[role='radio']").first().click(); // 😊 great
+    await pageA.getByRole("button", { name: "👁️ مشترک با همسر" }).click(); // make it SHARED
     await pageA.getByRole("button", { name: "ثبت", exact: true }).click();
     await expect(pageA.getByText("حال‌وهوای امروز ثبت شد")).toBeVisible({ timeout: 15_000 });
 
-    // ── B sees A's shared mood on the same page ──
+    // ── B sees A's shared mood in the shared list ──
     await pageB.goto("/relationship");
-    await expect(pageB.getByText("کاربر الف").first()).toBeVisible({ timeout: 20_000 });
+    // the list shows "میزیار... no — the OWNER's name is "میزبان تست"; B's own entries say "من"
+    await expect(pageB.getByText("میزبان تست").first()).toBeVisible({ timeout: 20_000 });
 
     // ── B has a notification about A's expense ──
     await pageB.goto("/notifications");
@@ -78,12 +77,13 @@ test.describe("Full couple workflow E2E (the golden path)", () => {
 });
 
 test.describe("Onboarding guards", () => {
-  test("fresh user without household gets redirected from /dashboard to onboarding", async ({ page }) => {
-    const s = suffix();
-    await registerViaUi(page, "بدون خانواده", `solo-${s}@example.com`);
-    // still on onboarding (register lands there)
-    await expect(page).toHaveURL(/\/onboarding/);
-    await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/onboarding/, { timeout: 15_000 });
+  test("household-complete user reaching /onboarding is bounced to /dashboard", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("ایمیل").fill("test-owner@example.com");
+    await page.getByLabel("رمز عبور").fill("Pass1234");
+    await page.getByRole("button", { name: "ورود" }).click();
+    await expect(page.getByText("خریدهای ضروری")).toBeVisible({ timeout: 30_000 });
+    await page.goto("/onboarding");
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   });
 });

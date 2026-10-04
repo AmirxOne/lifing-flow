@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { call, registerUser, loginUser, uniqueSuffix } from "./helpers";
+import { describe, it, expect } from "vitest";
+import { call, loginUser, joinViaInvite, uniqueSuffix } from "./helpers";
+import { fixtureSoloHousehold } from "./db-fixtures";
 
 describe("AUTH integration", () => {
   it("health endpoint responds", async () => {
@@ -23,23 +24,55 @@ describe("AUTH integration", () => {
     expect(res.status).toBe(400);
   });
 
-  it("registers a fresh user and sets session cookie", async () => {
-    const { cookie } = await registerUser("کاربر تست", `auth-${uniqueSuffix()}@example.com`);
-    expect(cookie).toMatch(/^lh_session=/);
-  });
-
-  it("rejects duplicate email registration", async () => {
-    const email = `dup-${uniqueSuffix()}@example.com`;
-    await registerUser("یک", email);
-    const res = await call("/api/auth/register", { method: "POST", json: { fullName: "دو", email, password: "Pass1234" } });
-    expect(res.status).toBe(409);
-  });
-
-  it("password shorter than 8 rejected", async () => {
+  it("public registration is CLOSED (private app law)", async () => {
     const res = await call("/api/auth/register", {
       method: "POST",
-      json: { fullName: "کوتاه", email: `short-${uniqueSuffix()}@example.com`, password: "123" },
+      json: {
+        fullName: "مهاجم", email: `intruder-${uniqueSuffix()}@example.com`, password: "Pass1234",
+        householdName: "خانواده مهاجم",
+      },
     });
+    expect(res.status).toBe(403);
+    expect(res.body.error?.code).toBe("REGISTRATION_CLOSED");
+  });
+
+  it("partner joins via invite code — the only account-creation path", async () => {
+    const solo = await fixtureSoloHousehold(uniqueSuffix());
+    const owner = await loginUser(solo.owner.email);
+    const invite = await call<{ code: string }>("/api/household/invite", { method: "POST", json: {} }, owner);
+    expect([200, 201]).toContain(invite.status);
+    const code = invite.body.data!.code;
+
+    const email = `join-it-${uniqueSuffix()}@example.com`;
+    const joined = await joinViaInvite(code, "همسر تست", email);
+    expect(joined.cookie).toMatch(/^lh_session=/);
+
+    // same email cannot join again — valid code from a different solo household
+    const solo2 = await fixtureSoloHousehold(uniqueSuffix());
+    const owner2 = await loginUser(solo2.owner.email);
+    const invite2 = await call<{ code: string }>("/api/household/invite", { method: "POST", json: {} }, owner2);
+    const dup = await call("/api/auth/join", {
+      method: "POST",
+      json: { code: invite2.body.data!.code, fullName: "دو", email, password: "Pass1234" },
+    });
+    expect(dup.status).toBe(409);
+  });
+
+  it("join with garbage invite code → 404", async () => {
+    const res = await call("/api/auth/join", {
+      method: "POST",
+      json: { code: "ZZZZ9999", fullName: "بی‌کد", email: `nocode-${uniqueSuffix()}@example.com`, password: "Pass1234" },
+    });
+    expect(res.status).toBe(404);
+    expect(res.body.error?.code).toBe("INVALID_INVITE");
+  });
+
+  it("join with short password → 400 (schema validated before code)", async () => {
+    const res = await call("/api/auth/join", {
+      method: "POST",
+      json: { code: "AAAA1111", fullName: "کوتاه", email: `shortj-${uniqueSuffix()}@example.com`, password: "123" },
+    });
+    // zod validates the body BEFORE the invite code is checked → always 400
     expect(res.status).toBe(400);
   });
 
@@ -102,8 +135,12 @@ describe("forgot/reset password integration", () => {
   });
 
   it("full reset cycle: forgot → reset → login with new password", async () => {
+    // create a throwaway partner via invite, then reset their password
+    const solo = await fixtureSoloHousehold(uniqueSuffix());
+    const owner = await loginUser(solo.owner.email);
+    const invite = await call<{ code: string }>("/api/household/invite", { method: "POST", json: {} }, owner);
     const email = `reset-${uniqueSuffix()}@example.com`;
-    await registerUser("بازیابی", email, "OldPass1234");
+    await joinViaInvite(invite.body.data!.code, "بازیابی", email, "OldPass1234");
 
     const forgot = await call<{ resetPath?: string }>("/api/auth/forgot-password", {
       method: "POST", json: { email },

@@ -14,5 +14,5 @@ export default async function OnboardingPage() {
     if (count >= 2) redirect("/dashboard"); // household complete — nothing to onboard
   }
 
-  return <OnboardingClient defaultName={user.fullName} />;
+  return <OnboardingClient defaultName={user.fullName} hasHousehold={!!user.householdId} />;
 }
