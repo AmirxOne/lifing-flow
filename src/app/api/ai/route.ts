@@ -133,12 +133,8 @@ export async function POST(req: NextRequest) {
       data.summary = { openTasks, pendingShopping, openGoals: goals.length };
     }
 
-    // persist chat (answer is deterministic from real data — schema-safe)
-    const chat = await prisma.aiChat.create({
-      data: { householdId, userId: user.id, question, answer, mode, data: data as object },
-    });
-
-    return ok({ id: chat.id, answer, data }, { status: 201 });
+    // stateless: answers are deterministic from real data — nothing persisted
+    return ok({ answer, data }, { status: 201 });
   } catch (err) {
     if (err instanceof HttpError) return fail(err.status, err.message, err.code);
     console.error("[ai]", err);
@@ -147,19 +143,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  try {
-    const { householdId } = await requireHousehold();
-    const items = await prisma.aiChat.findMany({
-      where: { householdId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-    return ok({ items });
-  } catch (err) {
-    if (err instanceof HttpError) return fail(err.status, err.message, err.code);
-    console.error("[ai history]", err);
-    return fail(500, "خطای سرور — لطفاً دوباره تلاش کنید", "INTERNAL");
-  }
+  return ok({ items: [] });
 }
 
 export const dynamic = "force-dynamic";

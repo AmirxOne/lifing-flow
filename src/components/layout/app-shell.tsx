@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { cn, faNum } from "@/lib";
 import { api } from "@/lib/api";
@@ -139,11 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className={cn("text-[10px]", active && "font-bold")}>{item.label}</span>
                 {active && (
-                  <motion.span
-                    layoutId="bottom-nav-active"
-                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-ink"
-                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                  />
+                  <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-ink" />
                 )}
               </Link>
             );
@@ -152,22 +147,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* ── more drawer (secondary nav) ── */}
-      <AnimatePresence>
+      <>
         {drawerOpen && (
           <>
-            <motion.div
-              className="fixed inset-0 z-40 bg-black/30"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <div
+              className="fixed inset-0 z-40 animate-[lh-fade_.15s_ease-out] bg-black/30"
               onClick={() => setDrawerOpen(false)}
             />
-            <motion.div
-              className="fixed bottom-16 inset-x-0 z-40 mx-auto max-w-[600px] rounded-t-2xl border-t border-line bg-white p-4 shadow-2xl"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 380, damping: 36 }}
+            <div
+              className="fixed bottom-16 inset-x-0 z-40 mx-auto max-w-[600px] animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] rounded-t-2xl border-t border-line bg-white p-4 shadow-2xl"
             >
               <div className="mb-3 text-center text-[12px] text-ink-faint">بیشتر</div>
               <div className="grid grid-cols-4 gap-2">
@@ -192,10 +180,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   خروج
                 </button>
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
+      </>
 
       {/* floating more button — opens secondary nav */}
       {!drawerOpen && (

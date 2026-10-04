@@ -43,7 +43,6 @@ model User {
   checkins            CheckIn[]
   notifications       Notification[]
   activities          Activity[]
-  aiChats             AiChat[]
 
   @@index([householdId])
 }
@@ -92,7 +91,6 @@ model Household {
   dateIdeas       DateIdea[]
   notifications   Notification[]
   activities      Activity[]
-  aiChats         AiChat[]
 }
 
 // Household membership invite: single-use, expiring code
@@ -401,18 +399,3 @@ model Activity {
   @@index([householdId, createdAt])
 }
 
-model AiChat {
-  id          String   @id @default(cuid())
-  householdId String
-  userId      String
-  question    String
-  answer      String
-  mode        String   @default("ASK") // ASK|MEAL_PLAN|SHOPPING|DATE_NIGHT|FINANCE
-  data        Json?    // validated structured payload (if any)
-  createdAt   DateTime @default(now())
-
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([householdId, createdAt])
-}

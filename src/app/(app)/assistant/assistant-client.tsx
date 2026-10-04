@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,9 @@ import { faNum } from "@/lib/fa";
 import { cn } from "@/lib";
 
 interface ChatTurn {
-  id: string;
+  id: number;
   question: string;
   answer: string;
-  mode: string;
-  createdAt: string;
 }
 
 const MODES = [
@@ -37,15 +35,10 @@ export function AssistantClient() {
   const [mode, setMode] = useState<string>("ASK");
   const [question, setQuestion] = useState("");
   const [budget, setBudget] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const historyQuery = useQuery({
-    queryKey: ["ai-history"],
-    queryFn: () => api<{ items: ChatTurn[] }>("/api/ai"),
-  });
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
 
   const askMutation = useMutation({
-    mutationFn: () => api<{ id: string; answer: string }>("/api/ai", {
+    mutationFn: () => api<{ answer: string }>("/api/ai", {
       method: "POST",
       json: {
         mode,
@@ -53,14 +46,11 @@ export function AssistantClient() {
         ...(mode === "DATE_NIGHT" && budget ? { budget: Number(budget.replace(/[^0-9]/g, "")) } : {}),
       },
     }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setTurns((prev) => [{ id: Date.now(), question: question.trim(), answer: res.answer }, ...prev].slice(0, 10));
       setQuestion("");
-      historyQuery.refetch();
-      setTimeout(() => listRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 100);
     },
   });
-
-  const turns = historyQuery.data?.items ?? [];
 
   return (
     <div className="space-y-4">
@@ -134,11 +124,9 @@ export function AssistantClient() {
         </div>
       </Card>
 
-      {/* history */}
-      <div ref={listRef} className="space-y-3">
-        {historyQuery.isLoading ? (
-          <SkeletonBlock className="h-20" />
-        ) : turns.length === 0 ? (
+      {/* answers */}
+      <div className="space-y-3">
+        {turns.length === 0 ? (
           <EmptyState
             icon={<span aria-hidden>🤖</span>}
             title="هنوز چیزی نپرسیده‌اید"
@@ -148,7 +136,7 @@ export function AssistantClient() {
           turns.map((t) => (
             <Card key={t.id} className="overflow-hidden">
               <div className="border-b border-line bg-paper-soft px-4 py-2.5 text-[12px] font-bold">
-                {MODES.find((m) => m.value === t.mode)?.label ?? t.mode} · {t.question}
+                {t.question}
               </div>
               <div className="whitespace-pre-line px-4 py-3 text-[13px] leading-6">{t.answer}</div>
             </Card>

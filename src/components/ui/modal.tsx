@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { X } from "@/components/ui/icon";
 import { cn } from "@/lib";
 
@@ -56,15 +55,12 @@ export function Modal({
   if (!ready) return null;
 
   return createPortal(
-    <AnimatePresence>
+    <>
       {open && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          <div
             onClick={backdropGuard}
-            className="fixed inset-0 z-50 bg-black/45"
+            className="fixed inset-0 z-50 animate-[lh-fade_.15s_ease-out] bg-black/45"
           />
           {/* desktop: centered modal / mobile: bottom sheet */}
           <div
@@ -73,22 +69,12 @@ export function Modal({
           >
             {/* کشیدن برای بستن فقط روی دستگاه لمسی — روی دسکتاپ با حرکت سریع موس
                 هنگام کلیک، مودال ناگهان بسته می‌شد */}
-            <motion.div
+            <div
               role="dialog"
               aria-modal="true"
               aria-label={title}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%", transition: { duration: 0.18, ease: [0.32, 0, 0.67, 0] } }}
-              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-              drag={typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? "y" : false}
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={{ top: 0, bottom: 0.6 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 120 || info.velocity.y > 700) onClose();
-              }}
               className={cn(
-                "flex max-h-[92dvh] w-full flex-col rounded-t-xl bg-white shadow-2xl sm:max-h-[86vh] sm:rounded-xl",
+                "flex max-h-[92dvh] w-full animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] flex-col rounded-t-xl bg-white shadow-2xl sm:max-h-[86vh] sm:rounded-xl",
                 wide ? "sm:max-w-2xl" : "sm:max-w-lg",
               )}
             >
@@ -118,11 +104,11 @@ export function Modal({
               {footer && (
                 <div className="border-t border-line px-5 py-3.5 pb-[max(14px,env(safe-area-inset-bottom))]">{footer}</div>
               )}
-            </motion.div>
+            </div>
           </div>
         </>
       )}
-    </AnimatePresence>,
+    </>,
     document.body,
   );
 }

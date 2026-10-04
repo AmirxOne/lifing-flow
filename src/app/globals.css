@@ -106,3 +106,18 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .btn-dots-spinner span { animation-duration: 1.8s; }
 }
+
+/* ── lightweight motion (replaces framer-motion) ── */
+@keyframes lh-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lh-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes lh-toast-in {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}

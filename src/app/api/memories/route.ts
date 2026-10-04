@@ -11,6 +11,7 @@ const memorySchema = z.object({
   description: z.string().trim().max(2000).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاریخ نامعتبر است"),
   tags: z.array(z.string().trim().min(1).max(20)).max(10).optional(),
+  photoUrls: z.array(z.string().regex(/^\/api\/uploads\/[a-f0-9]{64}\.(jpg|png|webp|gif)$/, "آدرس تصویر نامعتبر است")).max(9).optional(),
 });
 
 export async function GET() {
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
         description: d.description ?? null,
         date: startOfDayUtcFromIso(d.date),
         ...(d.tags ? { tags: d.tags } : {}),
+        ...(d.photoUrls?.length ? { photos: d.photoUrls } : {}),
         createdById: user.id,
       },
       include: { createdBy: { select: { id: true, fullName: true, avatarEmoji: true } } },
