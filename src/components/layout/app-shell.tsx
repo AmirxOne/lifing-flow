@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setDrawerOpen(false)}
             />
             <div
-              className="fixed bottom-16 inset-x-0 z-40 mx-auto max-w-[600px] animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] rounded-t-2xl border-t border-line bg-white p-4 shadow-2xl"
+              className="fixed bottom-0 inset-x-0 z-40 mx-auto max-w-[600px] animate-[lh-slide-up_.22s_cubic-bezier(.32,0,.67,0)] rounded-t-2xl border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
             >
               <div className="mb-3 text-center text-[12px] text-ink-faint">بیشتر</div>
               <div className="grid grid-cols-4 gap-2">
