@@ -62,3 +62,32 @@ test.describe("Cycle tracking (shared calendar feature)", () => {
     expect(body.data.periods.length).toBe(0);
   });
 });
+
+test.describe("Cycle forecasts & report", () => {
+  test("next-month predictions render dashed + variance banner + report modal", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("ایمیل").fill("test-owner@example.com");
+    await page.getByLabel("رمز عبور").fill("Pass1234");
+    await page.getByRole("button", { name: "ورود" }).click();
+    await page.waitForURL("**/dashboard", { timeout: 30_000 });
+    await page.goto("/calendar");
+    await expect(page.getByText("دوران قاعدگی").first()).toBeVisible({ timeout: 20_000 });
+
+    // variance banner about the latest period (test data has late/early periods)
+    await expect(page.getByText(/روز (دیرتر|زودتر)/).first()).toBeVisible({ timeout: 15_000 });
+
+    // forecast cells with dashed border on a following month (skip past current-cycle month)
+    await page.getByRole("button", { name: "ماه بعد" }).click();
+    await page.getByRole("button", { name: "ماه بعد" }).click();
+    const predicted = page.locator("button[aria-label*='پیش‌بینی']");
+    await expect(predicted.first()).toBeVisible({ timeout: 15_000 });
+    const dashed = await predicted.evaluateAll((els) => els.every((e) => e.className.includes("border-dashed")));
+    expect(dashed).toBe(true);
+
+    // report modal opens with stats
+    await page.getByRole("button", { name: "ماه قبل" }).click();
+    await page.getByRole("button", { name: "ماه قبل" }).click();
+    await page.getByRole("button", { name: /گزارش چرخه‌ها/ }).click();
+    await expect(page.getByText("میانگین چرخه")).toBeVisible({ timeout: 15_000 });
+  });
+});

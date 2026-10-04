@@ -84,7 +84,12 @@ export function CalendarClient() {
       phase: "PERIOD" | "FOLLICULAR" | "OVULATION_WINDOW" | "LUTEAL" | "UNKNOWN";
       dayOfCycle: number | null;
     };
+    forecasts?: string[];
+    lastVariance?: { daysLate: number; lengthDiff: number } | null;
+    report?: { id: string; start: string; end: string; len: number; gap: number | null; daysLate: number | null }[];
   }
+
+  const [cycleReportOpen, setCycleReportOpen] = useState(false);
 
   const cycleQuery = useQuery({
     queryKey: ["cycle"],
@@ -151,9 +156,9 @@ export function CalendarClient() {
 
   const predictedDaySet = useMemo(() => {
     const set = new Set<string>();
-    const next = cycleQuery.data?.prediction.nextStart;
     const len = cycleQuery.data?.stats.periodLen ?? 5;
-    if (next) {
+    // all forecasted starts (up to 3 cycles ahead → covers following months)
+    for (const next of cycleQuery.data?.forecasts ?? []) {
       let d = new Date(next + "T00:00:00Z");
       for (let i = 0; i < len; i++) {
         set.add(d.toISOString().slice(0, 10));
@@ -319,6 +324,28 @@ export function CalendarClient() {
               )}
               {openPeriod && (
                 <div className="text-[12px] text-rose-800">دوره جاری از {formatJalali(new Date(openPeriod.start + "T12:00:00+03:30"))} شروع شده — دکمه «پایان یافت» را وقتی تمام شد بزنید.</div>
+              )}
+              {(() => {
+                const v = cycleQuery.data?.lastVariance;
+                if (!v || (v.daysLate === 0 && v.lengthDiff === 0)) return null;
+                const parts: string[] = [];
+                if (v.daysLate > 0) parts.push(`${faNum(v.daysLate)} روز دیرتر از پیش‌بینی شروع شد`);
+                else if (v.daysLate < 0) parts.push(`${faNum(Math.abs(v.daysLate))} روز زودتر از پیش‌بینی شروع شد`);
+                if (v.lengthDiff > 0) parts.push(`${faNum(v.lengthDiff)} روز طولانی‌تر از معمول`);
+                else if (v.lengthDiff < 0) parts.push(`${faNum(Math.abs(v.lengthDiff))} روز کوتاه‌تر از معمول`);
+                return (
+                  <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] leading-5 text-amber-800">
+                    ⏱ دوره اخیر: {parts.join(" و ")}
+                  </div>
+                );
+              })()}
+              {(cycleQuery.data?.report?.length ?? 0) > 0 && (
+                <button
+                  onClick={() => setCycleReportOpen(true)}
+                  className="text-[11px] text-rose-700 underline underline-offset-4"
+                >
+                  گزارش چرخه‌ها ({faNum(cycleQuery.data!.report!.length)} دوره)
+                </button>
               )}
             </CardBody>
           </Card>
@@ -562,6 +589,44 @@ export function CalendarClient() {
             </div>
           </div>
           <input id="date" type="date" value={impDate} onChange={(e) => setImpDate(e.target.value)} className="hidden" aria-hidden />
+        </div>
+      </Modal>
+
+      {/* ── cycle report modal ── */}
+      <Modal
+        open={cycleReportOpen}
+        onClose={() => setCycleReportOpen(false)}
+        title="گزارش دوران قاعدگی"
+        footer={<Button variant="outline" onClick={() => setCycleReportOpen(false)}>بستن</Button>}
+      >
+        <div className="space-y-3">
+          {(cycleQuery.data?.stats) && (
+            <div className="rounded-lg bg-paper-soft px-3 py-2 text-[12px] leading-6">
+              میانگین چرخه: <b>{faNum(cycleQuery.data.stats.cycleLen)} روز</b> · میانگین طول دوره: <b>{faNum(cycleQuery.data.stats.periodLen)} روز</b>
+            </div>
+          )}
+          {(cycleQuery.data?.report ?? []).slice().reverse().map((r) => (
+            <div key={r.id} className="flex items-start justify-between gap-2 rounded-lg border border-line px-3 py-2">
+              <div>
+                <div className="text-[12px] font-bold">{formatJalali(new Date(r.start + "T12:00:00+03:30"))}</div>
+                <div className="text-[11px] text-ink-faint">تا {formatJalali(new Date(r.end + "T12:00:00+03:30"))} · {faNum(r.len)} روز</div>
+              </div>
+              <div className="text-left text-[11px]">
+                {r.gap != null && <div className="text-ink-soft">فاصله: {faNum(r.gap)} روز</div>}
+                {r.daysLate != null && r.daysLate !== 0 && (
+                  <div className={r.daysLate > 0 ? "text-amber-700" : "text-emerald-700"}>
+                    {r.daysLate > 0 ? `${faNum(r.daysLate)} روز دیرتر` : `${faNum(Math.abs(r.daysLate))} روز زودتر`}
+                  </div>
+                )}
+                {r.daysLate === 0 && <div className="text-emerald-700">سر وقت</div>}
+                <button
+                  onClick={() => deleteCycleMutation.mutate(r.id)}
+                  className="mt-1 text-ink-faint hover:text-red-600"
+                  aria-label="حذف دوره"
+                >🗑️</button>
+              </div>
+            </div>
+          ))}
         </div>
       </Modal>
 

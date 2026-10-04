@@ -73,7 +73,45 @@ export async function GET() {
       else phase = "FOLLICULAR";
     }
 
+    // forecasts: next up-to-3 predicted starts (covers following months)
+    const forecasts: string[] = [];
+    if (lastStart !== null) {
+      for (let n = 1; n <= 3; n++) {
+        const f = new Date(lastStart + cycleLen * n * DAY).toISOString().slice(0, 10);
+        if (toUtc(f) >= today) forecasts.push(f);
+      }
+    }
+
+    // variance: latest closed period vs its prediction (prev start + avg cycle)
+    const closedPeriods = sorted.filter((p) => p.end);
+    let lastVariance: { daysLate: number; lengthDiff: number } | null = null;
+    if (closedPeriods.length >= 2) {
+      const last = closedPeriods[closedPeriods.length - 1];
+      const prev = closedPeriods[closedPeriods.length - 2];
+      const predictedStart = toUtc(prev.start) + cycleLen * DAY;
+      const daysLate = Math.round((toUtc(last.start) - predictedStart) / DAY);
+      const actualLen = (toUtc(last.end!) - toUtc(last.start)) / DAY + 1;
+      lastVariance = { daysLate, lengthDiff: Math.round(actualLen - periodLen) };
+    }
+
+    // small history report rows
+    const report = closedPeriods.map((p, i) => {
+      const prev = closedPeriods[i - 1];
+      const len = (toUtc(p.end!) - toUtc(p.start)) / DAY + 1;
+      return {
+        id: p.id,
+        start: p.start.toISOString().slice(0, 10),
+        end: p.end!.toISOString().slice(0, 10),
+        len: Math.round(len),
+        gap: prev ? Math.round((toUtc(p.start) - toUtc(prev.start)) / DAY) : null,
+        daysLate: prev ? Math.round((toUtc(p.start) - (toUtc(prev.start) + cycleLen * DAY)) / DAY) : null,
+      };
+    });
+
     return ok({
+      forecasts,
+      lastVariance,
+      report,
       periods: periods.map((p) => ({
         id: p.id,
         start: p.start.toISOString().slice(0, 10),
