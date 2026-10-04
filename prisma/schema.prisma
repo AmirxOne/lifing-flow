@@ -47,6 +47,7 @@ model User {
   @@index([householdId])
   monthlyProvisions MonthlyProvision[] @relation("provisionCreator")
   fixedCosts        FixedCost[]        @relation("fixedCostCreator")
+  fixedCostPayments FixedCostPayment[] @relation("fixedCostPayer")
 }
 
 model Session {
@@ -389,6 +390,7 @@ model FixedCostPayment {
 
   fixedCost FixedCost  @relation(fields: [fixedCostId], references: [id], onDelete: Cascade)
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  paidBy    User?      @relation("fixedCostPayer", fields: [paidById], references: [id], onDelete: SetNull)
 
   @@unique([fixedCostId, monthKey])
   @@index([householdId, monthKey])

@@ -398,8 +398,8 @@ export function CalendarClient() {
                         "relative flex aspect-square flex-col items-center justify-center rounded-lg border text-[12px] transition-colors",
                         isSelected ? "border-ink bg-paper-soft font-bold" : "border-transparent hover:bg-white",
                         isToday && "ring-1 ring-ink",
-                        isPeriodDay && "bg-rose-100",
-                        isPredictedDay && "border-rose-300 border-dashed",
+                        isPeriodDay && "bg-rose-200/80",
+                        isPredictedDay && "border-2 border-dashed border-rose-400",
                       )}
                       aria-label={`${cell.jd} ${J_MONTHS[cell.jm - 1]}${isPeriodDay ? " — دوران قاعدگی" : isPredictedDay ? " — پیش‌بینی" : ""}`}
                       aria-pressed={isSelected}
@@ -416,9 +416,22 @@ export function CalendarClient() {
                         </span>
                       )}
                       {isPeriodDay && <span className="absolute top-1 right-1 text-[8px]" aria-hidden>🌸</span>}
+                      {isPredictedDay && !isPeriodDay && <span className="absolute bottom-1 left-1 text-[7px] text-rose-500" aria-hidden>پیش‌بینی</span>}
                     </button>
                   );
                 })}
+              </div>
+
+              {/* legend — real vs forecast at a glance */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[10.5px] text-ink-faint">
+                <span className="flex items-center gap-1.5">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-md bg-rose-200/80 text-[8px]" aria-hidden>🌸</span>
+                  روز قاعدگی (ثبت‌شده)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-4 w-4 rounded-md border-2 border-dashed border-rose-400" aria-hidden></span>
+                  پیش‌بینی دوره بعد
+                </span>
               </div>
 
               {/* selected day events */}

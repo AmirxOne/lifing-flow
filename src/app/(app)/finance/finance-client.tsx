@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { cn } from "@/lib";
 import type { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { useToast } from "@/components/ui/toast";
@@ -50,7 +51,7 @@ export function FinanceClient() {
   const toast = useToast();
   const confirm = useConfirm();
   const { me } = useAuth();
-  const [tab, setTab] = useState<"expenses" | "budgets">("expenses");
+  const [tab, setTab] = useState<"expenses" | "fixed" | "budgets">("expenses");
 
   // filters
   const [category, setCategory] = useState("");
@@ -195,9 +196,10 @@ export function FinanceClient() {
 
       <SegmentedTabs
         value={tab}
-        onChange={(v) => setTab(v as "expenses" | "budgets")}
+        onChange={(v) => setTab(v as "expenses" | "fixed" | "budgets")}
         items={[
           { id: "expenses", label: "هزینه‌ها" },
+          { id: "fixed", label: "هزینه‌های ثابت" },
           { id: "budgets", label: "بودجه ماه" },
         ]}
       />
@@ -299,6 +301,7 @@ export function FinanceClient() {
         </>
       )}
 
+      {tab === "fixed" && <FixedCostsPanel />}
       {tab === "budgets" && <BudgetsPanel data={budgetsQuery} />}
 
       {/* create/edit modal */}
@@ -488,6 +491,244 @@ function BudgetsPanel({ data }: { data: ReturnType<typeof useQuery<{ month: stri
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+// ───────────────────────── Fixed monthly costs (هزینه‌های ثابت) ─────────────────────────
+
+const FIXED_KIND_FA: Record<string, string> = {
+  RENT: "اجاره", BILL: "قبض", INSTALLMENT: "قسط", SUPPORT: "کمک ماهانه",
+};
+const FIXED_KIND_EMOJI: Record<string, string> = {
+  RENT: "🏠", BILL: "🧾", INSTALLMENT: "🏦", SUPPORT: "💛",
+};
+
+interface FixedCostItem {
+  id: string; title: string; amount: number; dayOfMonth: number | null;
+  kind: string; paid: boolean; paidBy: string | null; paidAt: string | null;
+}
+interface FixedCostsData {
+  monthKey: string; items: FixedCostItem[]; total: number; paid: number; remaining: number;
+}
+
+function FixedCostsPanel() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [day, setDay] = useState("");
+  const [kind, setKind] = useState("BILL");
+
+  const q = useQuery({
+    queryKey: ["fixed-costs"],
+    queryFn: () => api<FixedCostsData>("/api/fixed-costs"),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: () => api("/api/fixed-costs", {
+      method: "POST",
+      json: {
+        title: title.trim(),
+        amount: Number(toEnDigits(amount).replace(/[^0-9]/g, "")),
+        ...(day ? { dayOfMonth: Number(toEnDigits(day).replace(/[^0-9]/g, "")) } : {}),
+        kind,
+      },
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fixed-costs"] });
+      toast.push("هزینه ثابت اضافه شد", "success");
+      setModalOpen(false); setTitle(""); setAmount(""); setDay(""); setKind("BILL");
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
+  });
+
+  const payMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "pay" | "unpay" }) =>
+      api(`/api/fixed-costs?id=${id}`, { method: "PATCH", json: { action } }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["fixed-costs"] });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      toast.push(vars.action === "pay" ? "پرداخت شد ✓ (در هزینه‌ها ثبت شد)" : "تیک برداشته شد", "success");
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => api(`/api/fixed-costs?id=${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fixed-costs"] });
+      toast.push("حذف شد", "success");
+    },
+    onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
+  });
+
+  if (q.isLoading) return <div className="space-y-2"><SkeletonBlock className="h-16" /><SkeletonBlock className="h-16" /></div>;
+  if (q.isError) return <EmptyState title="بارگذاری نشد" description="دوباره تلاش کنید." action={<Button size="sm" variant="secondary" onClick={() => q.refetch()}>تلاش دوباره</Button>} />;
+
+  const data = q.data!;
+  const monthLabel = (() => {
+    const [y, m] = data.monthKey.split("-").map(Number);
+    const names = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+    return `${names[m - 1]} ${faNum(y)}`;
+  })();
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[13px] font-black">هزینه‌های ثابت {monthLabel}</div>
+        <Button size="sm" onClick={() => setModalOpen(true)}>+ افزودن</Button>
+      </div>
+
+      {/* month summary */}
+      <Card>
+        <CardBody className="space-y-2">
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-ink-soft">جمع ثابت‌ها</span>
+            <span className="font-black">{faPrice(data.total)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-ink-soft">پرداخت‌شده</span>
+            <span className="font-bold text-emerald-600">{faPrice(data.paid)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px]">
+            <span className="text-ink-soft">باقی‌مانده</span>
+            <span className="font-bold text-amber-600">{faPrice(data.remaining)}</span>
+          </div>
+          {data.total > 0 && (
+            <div className="h-2 overflow-hidden rounded-full bg-paper-deep">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.min(100, Math.round((data.paid / data.total) * 100))}%` }}
+              />
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* list */}
+      {data.items.length === 0 ? (
+        <EmptyState
+          icon={<span aria-hidden>🏠</span>}
+          title="هنوز هزینه ثابتی ندارید"
+          description="اجاره خونه، قبوض، قسط یا کمک ماهانه — یک‌بار تعریف کنید، هر ماه فقط تیک بزنید."
+          action={<Button size="sm" onClick={() => setModalOpen(true)}>+ افزودن هزینه ثابت</Button>}
+        />
+      ) : (
+        <div className="space-y-2">
+          {data.items.map((c) => (
+            <Card key={c.id} className={c.paid ? "p-3 opacity-60" : "p-3"}>
+              <div className="flex items-center gap-3">
+                {/* the tick */}
+                <button
+                  onClick={() => payMutation.mutate({ id: c.id, action: c.paid ? "unpay" : "pay" })}
+                  aria-label={c.paid ? `برگرداندن تیک ${c.title}` : `پرداخت ${c.title}`}
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    c.paid ? "border-emerald-500 bg-emerald-500 text-white" : "border-line bg-white text-transparent hover:border-emerald-400",
+                  )}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className={`truncate text-[13px] font-bold ${c.paid ? "line-through" : ""}`}>
+                    {FIXED_KIND_EMOJI[c.kind] ?? "🧾"} {c.title}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-ink-faint">
+                    {FIXED_KIND_FA[c.kind] ?? "قبض"}
+                    {c.dayOfMonth ? ` · روز ${faNum(c.dayOfMonth)}` : ""}
+                    {c.paid && c.paidBy ? ` · پرداخت: ${c.paidBy}` : ""}
+                  </div>
+                </div>
+                <div className="shrink-0 text-left">
+                  <div className="text-[13px] font-black">{faPrice(c.amount)}</div>
+                  <button
+                    onClick={() => removeMutation.mutate(c.id)}
+                    className="mt-1 rounded p-1 text-ink-faint hover:bg-red-50 hover:text-red-600"
+                    aria-label={`حذف ${c.title}`}
+                  >🗑️</button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* add modal */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="هزینه ثابت جدید"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>انصراف</Button>
+            <Button loading={addMutation.isPending} onClick={() => addMutation.mutate()}>ذخیره</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="fixed-title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input
+              id="fixed-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
+              placeholder="مثلاً اجاره خونه"
+            />
+          </div>
+          <div>
+            <label htmlFor="fixed-amount" className="mb-1.5 block text-[12px] font-medium text-ink-soft">مبلغ ماهانه (تومان)</label>
+            <FaInput
+              allow="digits"
+              id="fixed-amount"
+              aria-label="مبلغ ماهانه (تومان)" data-field="amount"
+              value={amount}
+              onChange={setAmount}
+              className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
+              placeholder="۸٬۰۰۰٬۰۰۰"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="fixed-kind" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
+              <Select
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: "BILL", label: "🧾 قبض" },
+                  { value: "RENT", label: "🏠 اجاره" },
+                  { value: "INSTALLMENT", label: "🏦 قسط" },
+                  { value: "SUPPORT", label: "💛 کمک ماهانه" },
+                ]}
+              />
+            </div>
+            <div>
+              <label htmlFor="fixed-day" className="mb-1.5 block text-[12px] font-medium text-ink-soft">روز پرداخت (اختیاری)</label>
+              <FaInput
+                allow="digits"
+                id="fixed-day"
+                aria-label="روز پرداخت" data-field="day"
+                value={day}
+                onChange={setDay}
+                className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
+                placeholder="۵"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] leading-5 text-ink-faint">
+            با تیک زدن «پرداخت» در هر ماه، مبلغ به‌صورت خودکار در هزینه‌های ماه ثبت می‌شود.
+          </p>
+          {addMutation.isError && (
+            <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-[12px] text-red-600">
+              {addMutation.error instanceof Error ? addMutation.error.message : "خطا در ذخیره"}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
