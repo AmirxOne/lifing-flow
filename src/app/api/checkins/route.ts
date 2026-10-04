@@ -4,7 +4,7 @@ import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
 import { requireHousehold, HttpError } from "@/server/auth/session";
 import { logActivity } from "@/server/household";
-import { VISIBILITIES, startOfDayUtcFromIso, endOfDayUtcFromIso } from "@/lib";
+import { startOfDayUtcFromIso, endOfDayUtcFromIso } from "@/lib";
 
 const checkinSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاریخ نامعتبر است"),

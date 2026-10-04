@@ -138,13 +138,6 @@ export const MOOD_EMOJI: Record<string, string> = {
   GREAT: "😊", GOOD: "🙂", NORMAL: "😐", SAD: "😔", ANGRY: "😡",
 };
 
-export const VISIBILITIES = ["PRIVATE", "SHARED"] as const;
-export type Visibility = (typeof VISIBILITIES)[number];
-
-export const VISIBILITY_FA: Record<string, string> = {
-  PRIVATE: "خصوصی", SHARED: "مشترک با همسر",
-};
-
 export const DATE_SETTINGS = ["INDOOR", "OUTDOOR", "ANY"] as const;
 export type DateSetting = (typeof DATE_SETTINGS)[number];
 

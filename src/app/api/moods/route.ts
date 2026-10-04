@@ -4,7 +4,7 @@ import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
 import { requireHousehold, HttpError } from "@/server/auth/session";
 import { logActivity } from "@/server/household";
-import { MOODS, VISIBILITIES, startOfDayUtcFromIso, endOfDayUtcFromIso } from "@/lib";
+import { MOODS, startOfDayUtcFromIso, endOfDayUtcFromIso } from "@/lib";
 
 const moodSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "تاریخ نامعتبر است"),

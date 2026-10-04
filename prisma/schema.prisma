@@ -46,6 +46,7 @@ model User {
 
   @@index([householdId])
   monthlyProvisions MonthlyProvision[] @relation("provisionCreator")
+  fixedCosts        FixedCost[]        @relation("fixedCostCreator")
 }
 
 model Session {
@@ -94,6 +95,8 @@ model Household {
   activities      Activity[]
   cyclePeriods CyclePeriod[]
   monthlyProvisions MonthlyProvision[]
+  fixedCosts        FixedCost[]
+  fixedCostPayments FixedCostPayment[]
 }
 
 // Household membership invite: single-use, expiring code
@@ -352,6 +355,45 @@ model DateIdea {
 
 // ───────────────────────────── /Monthly provisions ─────────────────────────────
 // Monthly household staples ("تهیه ماهانه") — each Jalali month has its own list.
+// ───────────────────────────── Fixed monthly costs ─────────────────────────────
+// اجاره، قبوض به تفکیک، قسط، کمک ماهانه همسر — قالب ثابت + وضعیت پرداخت هر ماه
+model FixedCost {
+  id           String   @id @default(cuid())
+  householdId  String
+  title        String
+  amount       Int      // تومان
+  dayOfMonth   Int?     // روز پرداخت (۱ تا ۳۱)
+  category     String   @default("BILLS") // ExpenseCategory key
+  // ماهانه / دوساله؟ نه — همه ماهانه‌اند؛ نوع فقط برای نمایش است:
+  kind         String   @default("BILL") // BILL | RENT | INSTALLMENT | SUPPORT
+  active       Boolean  @default(true)
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  household   Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy   User                 @relation("fixedCostCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  payments    FixedCostPayment[]
+
+  @@index([householdId, active])
+}
+
+// تیک پرداختِ هر ماه برای هر هزینه ثابت
+model FixedCostPayment {
+  id          String   @id @default(cuid())
+  householdId String
+  fixedCostId String
+  monthKey    String   // "1405-07"
+  paidById    String?
+  paidAt      DateTime @default(now())
+
+  fixedCost FixedCost  @relation(fields: [fixedCostId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([fixedCostId, monthKey])
+  @@index([householdId, monthKey])
+}
+
 model MonthlyProvision {
   id          String   @id @default(cuid())
   householdId String
