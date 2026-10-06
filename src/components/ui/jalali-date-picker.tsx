@@ -228,17 +228,35 @@ export function JalaliDatePicker({
             })}
           </div>
 
-          {/* quick: today */}
-          <button
-            type="button"
-            onClick={() => {
-              onChange(isoOfJalali(today.jy, today.jm, today.jd));
-              setOpen(false);
-            }}
-            className="mt-2 w-full rounded-md border border-line py-2 text-[12px] text-ink-soft transition-colors hover:bg-paper-soft"
-          >
-            امروز
-          </button>
+          {/* quick: today + clear */}
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(isoOfJalali(today.jy, today.jm, today.jd));
+                setOpen(false);
+              }}
+              className="rounded-md border border-line py-2 text-[12px] text-ink-soft transition-colors hover:bg-paper-soft"
+            >
+              امروز
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              disabled={!selected}
+              className={cn(
+                "rounded-md border py-2 text-[12px] transition-colors",
+                selected
+                  ? "border-line text-ink-soft hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                  : "cursor-not-allowed border-[#ececf1] text-ink-faint/60",
+              )}
+            >
+              پاک کردن
+            </button>
+          </div>
         </div>
       , document.body)}
     </div>
