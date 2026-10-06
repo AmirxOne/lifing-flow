@@ -494,11 +494,12 @@ export function CalendarClient() {
                       onDoubleClick={() => openCreate(iso)}
                       className={cn(
                         "relative flex aspect-square flex-col items-center justify-center rounded-lg border text-[12px] transition-colors",
-                        isSelected ? "border-ink bg-paper-soft font-bold" : "border-transparent hover:bg-white",
+                        isSelected ? "border-ink font-bold" : "border-transparent hover:bg-white",
                         isToday && "ring-1 ring-ink",
-                        isPeriodDay && "bg-rose-200/80",
+                        isPeriodDay && (isSelected ? "bg-rose-300" : "bg-rose-200/80"),
                         isPredictedDay && "border-2 border-dashed border-rose-400",
-                        isPmsDay && "border-dashed border-amber-400 bg-amber-50",
+                        isPmsDay && (isSelected ? "bg-amber-100" : "border-dashed border-amber-400 bg-amber-50"),
+                        isSelected && !isPeriodDay && !isPredictedDay && !isPmsDay && "bg-paper-soft",
                       )}
                       aria-label={`${cell.jd} ${J_MONTHS[cell.jm - 1]}${isPeriodDay ? " — دوران قاعدگی" : isPredictedDay ? " — پیش‌بینی دوره" : isPmsDay ? " — احتمال PMS" : ""}`}
                       aria-pressed={isSelected}
@@ -547,6 +548,19 @@ export function CalendarClient() {
                   action={<Button size="sm" variant="ghost" onClick={() => openCreate(selected)}>+ افزودن</Button>}
                 />
                 <CardBody className="space-y-2">
+                  {(periodDaySet.has(selected) || predictedDaySet.has(selected) || pmsDaySet.has(selected)) && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {periodDaySet.has(selected) && (
+                        <span className="badge border border-rose-200 bg-rose-100 text-rose-700">🌸 روز قاعدگی</span>
+                      )}
+                      {predictedDaySet.has(selected) && !periodDaySet.has(selected) && (
+                        <span className="badge border border-dashed border-rose-300 bg-white text-rose-600">پیش‌بینی دوره بعد</span>
+                      )}
+                      {pmsDaySet.has(selected) && !periodDaySet.has(selected) && !predictedDaySet.has(selected) && (
+                        <span className="badge border border-dashed border-amber-400 bg-amber-50 text-amber-700">⚠️ احتمال PMS</span>
+                      )}
+                    </div>
+                  )}
                   {selectedEvents.length === 0 ? (
                     <EmptyState
                       icon={<span aria-hidden>📅</span>}
