@@ -438,15 +438,17 @@ export function CalendarClient() {
             <button onClick={() => shiftMonth(-1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه قبل"><ChevronRight className="h-4 w-4" /></button>
             <div className="flex items-center gap-2">
               <div className="text-[14px] font-black">{J_MONTHS[view.jm - 1]} {faNum(view.jy)}</div>
-              {(view.jy !== today.jy || view.jm !== today.jm) && (
-                <button
-                  onClick={() => { setView({ jy: today.jy, jm: today.jm }); setSelected(isoOf(new Date())); }}
-                  className="flex h-7 items-center rounded-full bg-ink px-2.5 text-[10.5px] font-bold text-white"
-                  aria-label="رفتن به امروز"
-                >
-                  امروز
-                </button>
-              )}
+              <button
+                onClick={() => { setView({ jy: today.jy, jm: today.jm }); setSelected(isoOf(new Date())); }}
+                className={
+                  view.jy === today.jy && view.jm === today.jm
+                    ? "flex h-7 items-center rounded-full border border-ink/20 bg-paper-soft px-2.5 text-[10.5px] font-bold text-ink-faint"
+                    : "flex h-7 items-center rounded-full bg-ink px-2.5 text-[10.5px] font-bold text-white"
+                }
+                aria-label="رفتن به امروز"
+              >
+                امروز
+              </button>
             </div>
             <button onClick={() => shiftMonth(1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه بعد"><ChevronLeft className="h-4 w-4" /></button>
           </div>
