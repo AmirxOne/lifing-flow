@@ -199,7 +199,6 @@ export function CalendarClient() {
   const importantQuery = useQuery({
     queryKey: ["important-dates"],
     queryFn: () => api<{ items: ImpDate[] }>("/api/important-dates"),
-    enabled: tab === "important",
   });
 
   const invalidate = () => {
@@ -548,20 +547,59 @@ export function CalendarClient() {
                   action={<Button size="sm" variant="ghost" onClick={() => openCreate(selected)}>+ افزودن</Button>}
                 />
                 <CardBody className="space-y-2">
-                  {(periodDaySet.has(selected) || predictedDaySet.has(selected) || pmsDaySet.has(selected)) && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {periodDaySet.has(selected) && (
-                        <span className="badge border border-rose-200 bg-rose-100 text-rose-700">🌸 روز قاعدگی</span>
-                      )}
-                      {predictedDaySet.has(selected) && !periodDaySet.has(selected) && (
-                        <span className="badge border border-dashed border-rose-300 bg-white text-rose-600">پیش‌بینی دوره بعد</span>
-                      )}
-                      {pmsDaySet.has(selected) && !periodDaySet.has(selected) && !predictedDaySet.has(selected) && (
-                        <span className="badge border border-dashed border-amber-400 bg-amber-50 text-amber-700">⚠️ احتمال PMS</span>
-                      )}
+                  {((): React.ReactNode => {
+                    // full picture of the selected day: cycle status, countdown, important dates
+                    const isPeriod = periodDaySet.has(selected);
+                    const isPredicted = predictedDaySet.has(selected);
+                    const isPms = pmsDaySet.has(selected);
+                    const pred = cycleQuery.data?.prediction;
+                    const stats = cycleQuery.data?.stats;
+                    const todaySel = selected === todayIso;
+                    if (!isPeriod && !isPredicted && !isPms && !todaySel) return null;
+
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {isPeriod && (
+                          <span className="badge border border-rose-200 bg-rose-100 text-rose-700">🌸 روز قاعدگی</span>
+                        )}
+                        {isPredicted && !isPeriod && (
+                          <span className="badge border border-dashed border-rose-300 bg-white text-rose-600">پیش‌بینی دوره بعد</span>
+                        )}
+                        {isPms && !isPeriod && !isPredicted && (
+                          <span className="badge border border-dashed border-amber-400 bg-amber-50 text-amber-700">⚠️ احتمال PMS</span>
+                        )}
+                        {todaySel && pred?.daysUntilNext != null && pred.daysUntilNext > 0 && !isPeriod && (
+                          <span className="badge border border-line bg-paper-soft text-ink-soft">
+                            {faNum(pred.daysUntilNext)} روز تا شروع دوره بعدی
+                          </span>
+                        )}
+                        {todaySel && pred?.dayOfCycle != null && stats && (
+                          <span className="badge border border-line bg-paper-soft text-ink-soft">روز {faNum(pred.dayOfCycle)} از {faNum(stats.cycleLen)}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* important dates falling on this day */}
+                  {(importantQuery.data?.items ?? []).filter((d) => {
+                    const dIso = isoOf(new Date(d.date));
+                    const sameDay = dIso === selected;
+                    const sameYearlyDay = d.repeatsYearly && dIso.slice(5) === selected.slice(5);
+                    return sameDay || sameYearlyDay;
+                  }).map((d) => (
+                    <div key={d.id} className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2">
+                      <span className="text-[18px]" aria-hidden>{IMPORTANT_KIND_FA[d.kind] === "تولد" ? "🎂" : "💞"}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-bold">{d.title}</div>
+                        <div className="text-[11px] text-ink-faint">{IMPORTANT_KIND_FA[d.kind] ?? "مناسبت"}{d.repeatsYearly ? " · هر سال" : ""}</div>
+                      </div>
                     </div>
-                  )}
-                  {selectedEvents.length === 0 ? (
+                  ))}
+
+                  {selectedEvents.length === 0 && !(importantQuery.data?.items ?? []).some((d) => {
+                    const dIso = isoOf(new Date(d.date));
+                    return dIso === selected || (d.repeatsYearly && dIso.slice(5) === selected.slice(5));
+                  }) ? (
                     <EmptyState
                       icon={<span aria-hidden>📅</span>}
                       title="رویدادی در این روز نیست"
