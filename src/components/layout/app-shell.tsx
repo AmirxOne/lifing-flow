@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn, faNum } from "@/lib";
 import { api } from "@/lib/api";
+import { InstallBanner } from "@/components/layout/install-banner";
 import { useAuth } from "@/lib/auth-store";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AppIcon } from "@/components/ui/icon";
@@ -112,6 +113,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto min-h-[calc(100vh-3.5rem-4rem)] max-w-[600px] px-4 pb-24 pt-4">
         {children}
       </main>
+
+      <InstallBanner />
 
       {/* ── mobile bottom nav ── */}
       <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-line bg-white/95 backdrop-blur" aria-label="ناوبری اصلی">

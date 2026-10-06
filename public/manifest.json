@@ -1,0 +1,59 @@
+{
+  "name": "لایف‌هاب — زندگی مشترک ما",
+  "short_name": "لایف‌هاب",
+  "description": "اپلیکیشن خصوصی مدیریت زندگی مشترک دو نفره — هزینه‌ها، خانه، خرید، تقویم و خاطره‌ها",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa-IR",
+  "background_color": "#ffffff",
+  "theme_color": "#0d0d0d",
+  "categories": ["lifestyle", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ثبت هزینه",
+      "short_name": "هزینه",
+      "description": "ثبت سریع هزینه جدید",
+      "url": "/finance",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "لیست خرید",
+      "short_name": "خرید",
+      "description": "افزودن به لیست خرید",
+      "url": "/shopping",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "تقویم",
+      "short_name": "تقویم",
+      "description": "تقویم مشترک و چرخه",
+      "url": "/calendar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -13,6 +13,9 @@ const PUBLIC_PATHS = [
   "/icons",
   "/favicon.ico",
   "/_next",
+  "/manifest.json",
+  "/sw.js",
+  "/offline.html",
 ];
 
 export function middleware(req: NextRequest) {

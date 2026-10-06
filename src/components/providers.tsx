@@ -1,10 +1,20 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ToastProvider } from "@/components/ui/toast";
 
+/** Register the service worker (PWA install + offline shell). */
+function useServiceWorker() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
+  useServiceWorker();
   const [client] = useState(
     () =>
       new QueryClient({

@@ -14,8 +14,21 @@ export const metadata: Metadata = {
     default: "لایف‌هاب — زندگی مشترک ما",
     template: "%s | لایف‌هاب",
   },
-  description: "اپلیکیشن خصوصی مدیریت زندگی مشترک دو نفره — هزینه‌ها، خانه، خرید و خاطره‌ها",
+  description: "اپلیکیشن خصوصی مدیریت زندگی مشترک دو نفره — هزینه‌ها، خانه، خرید، تقویم و خاطره‌ها",
   applicationName: "لایف‌هاب",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "لایف‌هاب",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png" }],
+  },
   formatDetection: { telephone: false },
 };
 
