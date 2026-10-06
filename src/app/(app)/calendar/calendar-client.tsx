@@ -12,7 +12,6 @@ import { Select } from "@/components/ui/select";
 import { TimePicker, JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { ChevronRight, ChevronLeft } from "@/components/ui/icon";
 import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/components/ui/card";
-import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import {
   EVENT_KINDS, EVENT_KIND_FA, EVENT_KIND_EMOJI, REMINDERS, REMINDER_FA,
   IMPORTANT_KINDS, IMPORTANT_KIND_FA, type EventKind,
@@ -49,7 +48,6 @@ export function CalendarClient() {
   const qc = useQueryClient();
   const toast = useToast();
   const confirm = useConfirm();
-  const [tab, setTab] = useState<"month" | "important">("month");
 
   const today = jalaliToday();
   const [view, setView] = useState({ jy: today.jy, jm: today.jm });
@@ -84,6 +82,11 @@ export function CalendarClient() {
   const [impTitle, setImpTitle] = useState("");
   const [impKind, setImpKind] = useState("BIRTHDAY");
   const [impDate, setImpDate] = useState(isoOf(new Date()));
+
+  function openImp() {
+    setImpDate(selected); // default = the day the user tapped
+    setImpModal(true);
+  }
 
   // ── cycle (menstrual) tracking — shared, both partners see it ──
   const [cycleModal, setCycleModal] = useState(false);
@@ -306,7 +309,7 @@ export function CalendarClient() {
       <div className="flex items-center justify-between">
         <h1 className="text-[18px] font-black">تقویم مشترک</h1>
         <div className="flex gap-2">
-          {tab === "important" && <Button size="sm" variant="secondary" onClick={() => setImpModal(true)}>+ مناسبت</Button>}
+          <Button size="sm" variant="secondary" onClick={openImp}>+ مناسبت</Button>
           <Button size="sm" onClick={() => openCreate()}>+ رویداد</Button>
         </div>
       </div>
@@ -436,16 +439,11 @@ export function CalendarClient() {
         );
       })()}
 
-      <SegmentedTabs
-        value={tab}
-        onChange={(v) => setTab(v as typeof tab)}
-        items={[
-          { id: "month", label: "ماه" },
-          { id: "important", label: "مناسبت‌ها" },
-        ]}
-      />
-
-      {tab === "month" && (
+      {/*
+        single unified view: month grid, then important dates below —
+        no more tab switching (the two were one feature all along)
+      */}
+      {(true) && (
         <>
           {/* month header + today button */}
           <div className="flex items-center justify-between">
@@ -634,8 +632,14 @@ export function CalendarClient() {
         </>
       )}
 
-      {tab === "important" && (
-        <div className="space-y-2">
+      {/* ── important dates (birthdays / anniversaries) — always visible under the grid ── */}
+      <Card>
+        <CardHeader
+          title="مناسبت‌ها"
+          subtitle="تولدها و سالگردها"
+          action={<Button size="sm" variant="ghost" onClick={openImp}>+ افزودن</Button>}
+        />
+      <CardBody className="space-y-2">
           {importantQuery.isLoading ? (
             <div className="space-y-2"><SkeletonBlock className="h-16" /><SkeletonBlock className="h-16" /></div>
           ) : (importantQuery.data?.items.length ?? 0) === 0 ? (
@@ -643,7 +647,7 @@ export function CalendarClient() {
               icon={<span aria-hidden>🎂</span>}
               title="مناسبتی ثبت نشده"
               description="تولدها و سالگردها را اضافه کنید تا یادآوری‌شان را ببینید."
-              action={<Button size="sm" onClick={() => setImpModal(true)}>+ مناسبت</Button>}
+              action={<Button size="sm" onClick={openImp}>+ مناسبت</Button>}
             />
           ) : (
             importantQuery.data!.items.map((d) => {
@@ -662,8 +666,8 @@ export function CalendarClient() {
               );
             })
           )}
-        </div>
-      )}
+      </CardBody>
+      </Card>
 
       {/* event modal */}
       <Modal

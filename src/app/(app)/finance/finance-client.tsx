@@ -15,7 +15,6 @@ import { FilterPanel } from "@/components/ui/filter-panel";
 import { FaInput } from "@/components/ui/fa-input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/components/ui/card";
-import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import {
   faPrice, faCount, CATEGORY_FA, CATEGORY_EMOJI, EXPENSE_CATEGORIES,
 } from "@/lib";
@@ -51,7 +50,6 @@ export function FinanceClient() {
   const toast = useToast();
   const confirm = useConfirm();
   const { me } = useAuth();
-  const [tab, setTab] = useState<"expenses" | "fixed" | "budgets">("expenses");
 
   // filters
   const [category, setCategory] = useState("");
@@ -94,7 +92,6 @@ export function FinanceClient() {
   const budgetsQuery = useQuery({
     queryKey: ["budgets"],
     queryFn: () => api<{ month: string; items: BudgetItem[] }>("/api/budgets"),
-    enabled: tab === "budgets",
   });
 
   const saveMutation = useMutation({
@@ -193,18 +190,9 @@ export function FinanceClient() {
         <h1 className="text-[18px] font-black">مالی</h1>
         <Button size="sm" onClick={openCreate}>+ هزینه جدید</Button>
       </div>
+      <h2 className="px-1 text-[14px] font-black">💸 هزینه‌های ثبت‌شده</h2>
 
-      <SegmentedTabs
-        value={tab}
-        onChange={(v) => setTab(v as "expenses" | "fixed" | "budgets")}
-        items={[
-          { id: "expenses", label: "هزینه‌ها" },
-          { id: "fixed", label: "هزینه‌های ثابت" },
-          { id: "budgets", label: "بودجه ماه" },
-        ]}
-      />
-
-      {tab === "expenses" && (
+      {(true) && (
         <>
           {/* balance card */}
           <Card>
@@ -301,8 +289,19 @@ export function FinanceClient() {
         </>
       )}
 
-      {tab === "fixed" && <FixedCostsPanel />}
-      {tab === "budgets" && <BudgetsPanel data={budgetsQuery} />}
+      {/* ── هزینه‌های ثابت ماهانه (اجاره، قبوض، اقساط…) ── */}
+      <section className="pt-2">
+        <h2 className="mb-2 px-1 text-[14px] font-black">🏠 هزینه‌های ثابت ماهانه</h2>
+        <p className="mb-2 px-1 text-[11px] leading-5 text-ink-faint">اجاره، قبوض و اقساطی که هر ماه تکرار می‌شوند — یک بار تعریف کنید، هر ماه فقط تیک بزنید.</p>
+        <FixedCostsPanel />
+      </section>
+
+      {/* ── سقف خرج هر دسته (بودجه) ── */}
+      <section className="pt-2">
+        <h2 className="mb-2 px-1 text-[14px] font-black">🎯 سقف خرج دسته‌ها</h2>
+        <p className="mb-2 px-1 text-[11px] leading-5 text-ink-faint">برای هر دسته (خوراک، حمل‌ونقل…) سقف ماهانه تعیین کنید تا قبل از رد شدن خبردار شوید.</p>
+        <BudgetsPanel data={budgetsQuery} />
+      </section>
 
       {/* create/edit modal */}
       <Modal

@@ -12,7 +12,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AppIcon } from "@/components/ui/icon";
 import {
   LayoutDashboard, BarChart3, CheckCheck, CalendarDays,
-  Users, MessageCircle, Sparkles, Bell, Settings, LogOut, Search,
+  Users, MessageCircle, Sparkles, Bell, Settings, LogOut,
 } from "@/components/ui/icon";
 import { ConfirmModalHost } from "@/components/ui/confirm-modal";
 
@@ -83,13 +83,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Link
-              href="/search"
-              aria-label="جستجو"
-              className="flex h-9 w-9 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-paper-soft hover:text-ink"
-            >
-              <Search size={18} />
-            </Link>
             <Link
               href="/notifications"
               aria-label="اعلان‌ها"

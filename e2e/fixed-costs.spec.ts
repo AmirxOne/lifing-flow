@@ -15,7 +15,8 @@ test.describe("Fixed monthly costs", () => {
     }
 
     await page.goto("/finance");
-    await page.getByRole("tab", { name: "هزینه‌های ثابت" }).click();
+    // fixed costs are now an always-visible section (tabs removed) — scroll to it
+    await page.getByRole("heading", { name: /هزینه‌های ثابت ماهانه/ }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(1500);
 
     // add via modal
@@ -29,12 +30,15 @@ test.describe("Fixed monthly costs", () => {
     // tick pay
     await page.getByRole("button", { name: /^پرداخت قسط ماشین تست$/ }).click({ force: true });
     await expect(page.getByText(/پرداخت شد/).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("text=قسط ماشین تست").first()).toHaveClass(/line-through/);
+    // paid → the pay button disappears and "پرداخت شد" chip shows
+    await expect(
+      page.getByRole("button", { name: /^پرداخت قسط ماشین تست$/ })
+    ).toBeHidden();
 
-    // expenses tab shows the auto-logged entry
-    await page.getByRole("tab", { name: "هزینه‌ها", exact: true }).click();
+    // expenses list (always visible now) shows the auto-logged entry
+    await page.getByRole("heading", { name: /هزینه‌های ثبت‌شده/ }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(2000);
-    await expect(page.getByText(/قسط ماشین تست \(1405/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/قسط ماشین تست \(۱۴۰۵|قسط ماشین تست \(1405/).first()).toBeVisible({ timeout: 10000 });
 
     // partner sees it paid
     const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -42,7 +46,7 @@ test.describe("Fixed monthly costs", () => {
     await login(page2, "test-partner@example.com");
     await page2.waitForURL("**/dashboard", { timeout: 30000 });
     await page2.goto("/finance");
-    await page2.getByRole("tab", { name: "هزینه‌های ثابت" }).click();
+    await page2.getByRole("heading", { name: /هزینه‌های ثابت ماهانه/ }).scrollIntoViewIfNeeded();
     await page2.waitForTimeout(1500);
     await expect(page2.getByText("قسط ماشین تست").first()).toBeVisible({ timeout: 10000 });
     await expect(page2.locator(".line-through", { hasText: "قسط ماشین تست" }).first()).toBeVisible({ timeout: 10000 });
