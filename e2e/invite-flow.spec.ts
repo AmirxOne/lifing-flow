@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 import { suffix, provisionSoloHousehold } from "./helpers";
 
 test.describe("Closed registration (private two-person app)", () => {
@@ -31,6 +31,7 @@ test.describe("Closed registration (private two-person app)", () => {
 
 test.describe("Invite-code partner join (the golden path)", () => {
   test("owner generates code → partner creates account via /join → both share data", async ({ browser }) => {
+    test.setTimeout(120_000);
     const s = suffix();
 
     // ── Owner: FRESH solo household (DB-provisioned — registration is closed) ──

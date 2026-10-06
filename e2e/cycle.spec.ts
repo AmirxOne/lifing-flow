@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
+import { dialogButton } from "./helpers";
 
 test.describe("Cycle tracking (shared calendar feature)", () => {
   test("log period via UI → prediction appears → partner sees it too", async ({ browser }) => {
@@ -23,11 +24,7 @@ test.describe("Cycle tracking (shared calendar feature)", () => {
     // ── Log a period starting today ──
     await pageA.getByRole("button", { name: "+ ثبت دوره" }).click();
     // JalaliDatePicker defaults to today — just submit
-    await pageA.evaluate(() => {
-      const dlg = document.querySelector('[role=\dialog\]');
-      const btns = dlg ? [...dlg.querySelectorAll("button")].filter((b) => b.textContent.trim() === "ثبت") : [];
-      btns[btns.length - 1]?.click();
-    });
+    await dialogButton(pageA, "ثبت");
     await expect(pageA.getByText("دوران ثبت شد").first()).toBeVisible({ timeout: 15_000 });
 
     // ── Ongoing period state: today's cell is marked + "پایان یافت" button ──

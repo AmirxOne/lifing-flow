@@ -1,11 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { loginViaUi as login } from "./helpers";
-
-async function prepare(page: import("@playwright/test").Page) {
-  await page.evaluate(() => {
-    document.querySelectorAll("nextjs-portal").forEach((n) => n.remove());
-  });
-}
+import { test, expect } from "./test";
+import { loginViaUi as login, dialogButton } from "./helpers";
 
 test.describe("Fixed monthly costs", () => {
   test("add via UI → tick pay → auto-logged in expenses → partner sees paid", async ({ browser }) => {
@@ -13,10 +7,8 @@ test.describe("Fixed monthly costs", () => {
     const page = await ctx.newPage();
     await login(page, "test-owner@example.com");
     await page.waitForURL("**/dashboard", { timeout: 30000 });
-    await prepare(page);
 
-    // clean residue
-    await page.request.post("/api/auth/login", { data: { email: "test-owner@example.com", password: "Pass1234" } }).catch(() => {});
+    // clean residue from earlier runs
     const existing = await (await page.request.get("/api/fixed-costs")).json();
     for (const item of existing.data?.items ?? []) {
       if (item.title.includes("تست")) await page.request.delete(`/api/fixed-costs?id=${item.id}`);
@@ -30,14 +22,8 @@ test.describe("Fixed monthly costs", () => {
     await page.getByRole("button", { name: "+ افزودن" }).first().click();
     await page.waitForTimeout(600);
     await page.locator("#fixed-title").fill("قسط ماشین تست");
-    // type Persian digits char by char so FaInput onChange fires per keystroke
-    for (const ch of "3000000") {
-      await page.locator("#fixed-amount").pressSequentially(ch, { delay: 30 }).catch(() => page.locator("#fixed-amount").type(ch));
-    }
-    await page.evaluate(() => {
-      const btns = [...document.querySelectorAll("button")].filter((b) => b.textContent.trim() === "ذخیره");
-      btns[btns.length - 1].click();
-    });
+    await page.locator("#fixed-amount").fill("3000000");
+    await dialogButton(page, "ذخیره");
     await expect(page.getByText("قسط ماشین تست").first()).toBeVisible({ timeout: 10000 });
 
     // tick pay
@@ -61,11 +47,13 @@ test.describe("Fixed monthly costs", () => {
     await expect(page2.getByText("قسط ماشین تست").first()).toBeVisible({ timeout: 10000 });
     await expect(page2.locator(".line-through", { hasText: "قسط ماشین تست" }).first()).toBeVisible({ timeout: 10000 });
 
-    // cleanup
+    // cleanup — the FixedCost AND the auto-logged Expense (its latin monthKey leaks
+    // onto the dashboard and breaks the no-latin-digits design law)
     const mine = await (await page.request.get("/api/fixed-costs")).json();
     for (const item of mine.data?.items ?? []) {
       if (item.title.includes("تست")) await page.request.delete(`/api/fixed-costs?id=${item.id}`);
     }
+    await page.request.delete("/api/expenses?title=" + encodeURIComponent("قسط ماشین تست (1405-07"));
     await ctx.close();
     await ctx2.close();
   });

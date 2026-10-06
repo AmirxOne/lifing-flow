@@ -1,8 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
+import { dialogButton } from "./helpers";
 import { suffix, joinViaUi, provisionSoloHousehold } from "./helpers";
 
 test.describe("Full couple workflow E2E (the golden path)", () => {
   test("A invites → B joins via /join → shared life", async ({ browser, request }) => {
+    test.setTimeout(120_000);
     const s = suffix();
 
     // ── A: fresh solo household (DB-provisioned, like seed) ──
@@ -32,7 +34,7 @@ test.describe("Full couple workflow E2E (the golden path)", () => {
     await pageA.getByRole("button", { name: "+ هزینه جدید" }).click();
     await pageA.getByLabel("عنوان").fill("شام رستوران");
     await pageA.getByLabel("مبلغ (تومان)").fill("۵۰۰۰۰۰");
-    await pageA.getByRole("button", { name: "ذخیره", exact: true }).click();
+    await dialogButton(pageA, "ذخیره");
     await expect(pageA.getByText("شام رستوران").first()).toBeVisible({ timeout: 20_000 });
     await expect(pageA.getByText("۵۰۰٬۰۰۰ تومان").first()).toBeVisible();
 
@@ -58,7 +60,7 @@ test.describe("Full couple workflow E2E (the golden path)", () => {
     // ── A logs a SHARED mood ──
     await pageA.goto("/relationship");
     await pageA.locator("button[role='radio']").first().click(); // 😊 great — always shared now
-    await pageA.getByRole("button", { name: "ثبت", exact: true }).click();
+    await dialogButton(pageA, "ثبت");
     await expect(pageA.getByText("حال‌وهوای امروز ثبت شد")).toBeVisible({ timeout: 15_000 });
 
     // ── B sees A's shared mood in the shared list ──

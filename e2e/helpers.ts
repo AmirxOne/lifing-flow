@@ -62,3 +62,17 @@ export async function newInviteCode(request: import("@playwright/test").APIReque
   if (!body?.data?.code) throw new Error(`invite failed: ${JSON.stringify(body)}`);
   return body.data.code as string;
 }
+
+/**
+ * Click a button inside the currently-open dialog by its exact label.
+ * Uses a native DOM click — Playwright's regular click gets intercepted by
+ * the Next.js dev overlay on bottom-sheet footers in dev mode.
+ */
+export async function dialogButton(page: import("@playwright/test").Page, label: string): Promise<void> {
+  await page.evaluate((lbl) => {
+    const root = document.querySelector('[role="dialog"]') ?? document;
+    const btns = [...root.querySelectorAll("button")].filter((b) => b.textContent.trim() === lbl);
+    if (!btns.length) throw new Error(`dialog button "${lbl}" not found`);
+    btns[btns.length - 1].click();
+  }, label);
+}

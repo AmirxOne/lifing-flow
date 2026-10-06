@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 
 test.describe("Design system laws (LAW: ظاهر = MeetingHub، اعداد = فارسی، پول = تومان)", () => {
   test.beforeEach(async ({ page }) => {

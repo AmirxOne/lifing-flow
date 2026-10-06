@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 import { suffix } from "./helpers";
 
 test.describe("Authentication E2E", () => {

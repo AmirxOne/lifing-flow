@@ -9,7 +9,7 @@ import { jalaliMonthKey } from "@/lib";
 // The TEMPLATE is permanent; each Jalali month you just tick payments off.
 // Ticking also logs a real expense (BILLS category) so stats stay in sync.
 
-export const FIXED_KINDS = ["RENT", "BILL", "INSTALLMENT", "SUPPORT"] as const;
+const FIXED_KINDS = ["RENT", "BILL", "INSTALLMENT", "SUPPORT"] as const;
 
 const upsertSchema = z.object({
   title: z.string().trim().min(1, "عنوان را وارد کنید").max(100),
@@ -124,7 +124,7 @@ export async function PATCH(req: NextRequest) {
         await tx.expense.create({
           data: {
             householdId,
-            title: `${cost.title} (${month})`,
+            title: `${cost.title} (${month})`, // month label converted to Persian digits on the client
             amount: cost.amount,
             category: "BILLS",
             date: new Date(),

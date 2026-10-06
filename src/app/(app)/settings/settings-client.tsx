@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-store";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardBody, SkeletonBlock } from "@/components/ui/card";
-import { toEnDigits } from "@/lib/fa";
 import { cn } from "@/lib";
 
 interface HouseholdInfo {
@@ -19,7 +17,8 @@ interface HouseholdInfo {
   invitations: { id: string; code: string; expiresAt: string }[];
 }
 
-const EMOJIS = ["🏠", "💞", "🌟", "🏡", "🌿", "☕", "🌙", "🐱", "🍳", "🧁"];
+const HH_EMOJIS = ["🏠", "💞", "🌟", "🏡", "🌿", "☕", "🌙", "🐱", "🍳", "🧁"];
+const ME_EMOJIS = ["😎", "🌸", "🦁", "🐧", "🦊", "🐻", "☕", "🎸", "👩", "👨"];
 
 export function SettingsClient() {
   const router = useRouter();
@@ -31,6 +30,7 @@ export function SettingsClient() {
   const [hhName, setHhName] = useState("");
   const [hhEmoji, setHhEmoji] = useState("🏠");
   const [myEmoji, setMyEmoji] = useState("");
+  const [myName, setMyName] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -47,7 +47,10 @@ export function SettingsClient() {
   }, [hhQuery.data]);
 
   useEffect(() => {
-    if (me) setMyEmoji(me.avatarEmoji ?? "");
+    if (me) {
+      setMyEmoji(me.avatarEmoji ?? "");
+      setMyName(me.fullName ?? "");
+    }
   }, [me]);
 
   const saveHhMutation = useMutation({
@@ -64,7 +67,10 @@ export function SettingsClient() {
   });
 
   const saveAvatarMutation = useMutation({
-    mutationFn: () => api("/api/me", { method: "PATCH", json: { avatarEmoji: myEmoji || null } }),
+    mutationFn: () => api("/api/me", {
+      method: "PATCH",
+      json: { avatarEmoji: myEmoji || null, ...(myName.trim() && myName !== me?.fullName ? { fullName: myName.trim() } : {}) },
+    }),
     onSuccess: async () => {
       await refresh();
       toast.push("پروفایل ذخیره شد", "success");
@@ -116,16 +122,93 @@ export function SettingsClient() {
     return <div className="space-y-3"><SkeletonBlock className="h-32" /><SkeletonBlock className="h-32" /></div>;
   }
 
-  const partner = hhQuery.data?.users.find((u) => u.id !== me?.id);
+  const users = hhQuery.data?.users ?? [];
+  const partner = users.find((u) => u.id !== me?.id);
   const invite = hhQuery.data?.invitations[0];
+  const myDirty = (myEmoji || null) !== (me?.avatarEmoji ?? null) || (myName.trim() !== "" && myName !== me?.fullName);
 
   return (
     <div className="space-y-4">
       <h1 className="text-[18px] font-black">تنظیمات</h1>
 
-      {/* household */}
+      {/* ── accounts (all members of this household) ── */}
       <Card>
-        <CardHeader title="خانواده" subtitle={partner ? `همسر: ${partner.fullName}` : "همسری ندارید — دعوت کنید"} />
+        <CardHeader
+          title={`${hhQuery.data?.avatarEmoji ?? "🏠"} ${hhQuery.data?.name ?? "خانواده"}`}
+          subtitle={partner ? `${users.length} نفر در این خانه` : "فقط شما — همسرتان را دعوت کنید"}
+        />
+        <CardBody className="space-y-2">
+          {users.map((u) => {
+            const isMe = u.id === me?.id;
+            return (
+              <div key={u.id} className="flex items-center gap-3 rounded-xl border border-line bg-paper-soft px-3 py-3">
+                <div className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[20px]",
+                  isMe ? "bg-ink text-white" : "border border-line bg-white",
+                )} aria-hidden>
+                  {u.avatarEmoji ?? (isMe ? "🙂" : "🫥")}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[14px] font-bold">{u.fullName}</span>
+                    {isMe && <span className="badge shrink-0">شما</span>}
+                    {!isMe && <span className="text-[10.5px] text-ink-faint">همسر</span>}
+                  </div>
+                  <div dir="ltr" className="mt-0.5 truncate text-left text-[11px] text-ink-faint">{u.email}</div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* invite slot — shown when the partner seat is free */}
+          {!partner && (
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-line px-3 py-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dashed border-line text-[18px] text-ink-faint" aria-hidden>＋</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-ink-soft">صندلی همسر خالی است</div>
+                {invite ? (
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <code dir="ltr" className="rounded bg-paper-soft px-2 py-1 font-mono text-[14px] tracking-widest">{invite.code}</code>
+                    <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard?.writeText(invite.code); toast.push("کد کپی شد", "success"); }}>کپی</Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="secondary" className="mt-1.5" loading={inviteMutation.isPending} onClick={() => inviteMutation.mutate()}>
+                    ساخت کد دعوت
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* ── my profile ── */}
+      <Card>
+        <CardHeader title="پروفایل من" subtitle={me?.email} />
+        <CardBody className="space-y-3">
+          <div>
+            <label htmlFor="my-name" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام نمایشی</label>
+            <input id="my-name" value={myName} onChange={(e) => setMyName(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" />
+          </div>
+          <div>
+            <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">آواتار من</span>
+            <div className="flex flex-wrap gap-2">
+              {ME_EMOJIS.map((e) => (
+                <button key={e} onClick={() => setMyEmoji(e)} aria-pressed={myEmoji === e} aria-label={`آواتار ${e}`} className={cn("h-10 w-10 rounded-lg border text-[18px]", myEmoji === e ? "border-ink bg-paper-soft" : "border-line hover:bg-paper-soft")}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button size="sm" loading={saveAvatarMutation.isPending} disabled={!myDirty} onClick={() => saveAvatarMutation.mutate()}>
+            ذخیره پروفایل
+          </Button>
+        </CardBody>
+      </Card>
+
+      {/* ── household ── */}
+      <Card>
+        <CardHeader title="خانواده" subtitle="نام و نشان خانه‌تان" />
         <CardBody className="space-y-3">
           <div>
             <label htmlFor="household-name" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نام خانواده</label>
@@ -134,56 +217,20 @@ export function SettingsClient() {
           <div>
             <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">آواتار خانواده</span>
             <div className="flex flex-wrap gap-2">
-              {EMOJIS.map((e) => (
-                <button key={e} onClick={() => setHhEmoji(e)} aria-pressed={hhEmoji === e} className={cn("h-10 w-10 rounded-lg border text-[18px]", hhEmoji === e ? "border-ink bg-paper-soft" : "border-line hover:bg-paper-soft")}>
+              {HH_EMOJIS.map((e) => (
+                <button key={e} onClick={() => setHhEmoji(e)} aria-pressed={hhEmoji === e} aria-label={`آواتار ${e}`} className={cn("h-10 w-10 rounded-lg border text-[18px]", hhEmoji === e ? "border-ink bg-paper-soft" : "border-line hover:bg-paper-soft")}>
                   {e}
                 </button>
               ))}
             </div>
           </div>
-          <Button size="sm" loading={saveHhMutation.isPending} disabled={!hhName.trim()} onClick={() => saveHhMutation.mutate()}>
+          <Button size="sm" variant="secondary" loading={saveHhMutation.isPending} disabled={!hhName.trim() || hhName === hhQuery.data?.name} onClick={() => saveHhMutation.mutate()}>
             ذخیره
           </Button>
-
-          {!partner && (
-            <div className="rounded-lg border border-dashed border-line p-3">
-              <div className="text-[12px] text-ink-soft">همسرتان را دعوت کنید</div>
-              {invite ? (
-                <div className="mt-2 flex items-center justify-between">
-                  <code dir="ltr" className="rounded bg-paper-soft px-2 py-1 font-mono text-[14px] tracking-widest">{invite.code}</code>
-                  <Button size="sm" variant="ghost" onClick={() => navigator.clipboard?.writeText(invite.code)}>کپی</Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="secondary" className="mt-2" loading={inviteMutation.isPending} onClick={() => inviteMutation.mutate()}>
-                  ساخت کد دعوت
-                </Button>
-              )}
-            </div>
-          )}
         </CardBody>
       </Card>
 
-      {/* profile */}
-      <Card>
-        <CardHeader title="پروفایل من" subtitle={me?.email} />
-        <CardBody className="space-y-3">
-          <div>
-            <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">آواتار من</span>
-            <div className="flex flex-wrap gap-2">
-              {["😎", "🌸", "🦁", "🐧", "🦊", "🐻", "☕", "🎸"].map((e) => (
-                <button key={e} onClick={() => setMyEmoji(e)} aria-pressed={myEmoji === e} className={cn("h-10 w-10 rounded-lg border text-[18px]", myEmoji === e ? "border-ink bg-paper-soft" : "border-line hover:bg-paper-soft")}>
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Button size="sm" variant="secondary" loading={saveAvatarMutation.isPending} onClick={() => saveAvatarMutation.mutate()}>
-            ذخیره پروفایل
-          </Button>
-        </CardBody>
-      </Card>
-
-      {/* password */}
+      {/* ── password ── */}
       <Card>
         <CardHeader title="تغییر رمز عبور" />
         <CardBody className="space-y-3">
@@ -201,16 +248,7 @@ export function SettingsClient() {
         </CardBody>
       </Card>
 
-      {/* privacy note */}
-      <Card>
-        <CardHeader title="حریم خصوصی" />
-        <CardBody className="space-y-2 text-[12px] leading-6 text-ink-soft">
-          <div>🔒 حال‌وهوا و چک‌این «خصوصی» فقط برای خودتان قابل مشاهده است — این محدودیت در سرور اعمال می‌شود.</div>
-          <div>👀 داده‌های خانواده فقط برای دو نفر شما قابل دسترسی است.</div>
-        </CardBody>
-      </Card>
-
-      {/* danger zone */}
+      {/* ── danger zone ── */}
       <Card className="border-red-200">
         <CardHeader title="منطقه خطر" subtitle="اقدامات برگشت‌ناپذیر" />
         <CardBody className="flex flex-wrap gap-2">

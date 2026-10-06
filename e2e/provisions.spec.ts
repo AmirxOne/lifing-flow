@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test";
 
 test.describe("Monthly provisions (تهیه ماهانه)", () => {
   test("add → tick bought → defer to next month → both partners see", async ({ browser }) => {
@@ -9,6 +9,15 @@ test.describe("Monthly provisions (تهیه ماهانه)", () => {
     await pageA.getByLabel("رمز عبور").fill("Pass1234");
     await pageA.getByRole("button", { name: "ورود" }).click();
     await pageA.waitForURL("**/dashboard", { timeout: 30_000 });
+    // wipe stale rows from earlier runs via API (both current + next month)
+    for (const m of [null, "1405-08"]) {
+      const sp = m ? `?month=${m}` : "";
+      const stale = await (await pageA.request.get(`/api/provisions${sp}`)).json();
+      for (const it of stale.data?.items ?? []) {
+        if (it.title.includes("تست")) await pageA.request.delete(`/api/provisions?id=${it.id}`);
+      }
+    }
+
     await pageA.goto("/shopping");
     await pageA.getByRole("tab", { name: "تهیه ماهانه" }).click();
     await expect(pageA.getByText(/مهر ۱۴۰۵/).first()).toBeVisible({ timeout: 15_000 });
