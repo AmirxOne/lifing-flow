@@ -435,7 +435,7 @@ export function CalendarClient() {
         <>
           {/* month header + today button */}
           <div className="flex items-center justify-between">
-            <button onClick={() => shiftMonth(1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه بعد"><ChevronRight className="h-4 w-4" /></button>
+            <button onClick={() => shiftMonth(-1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه قبل"><ChevronLeft className="h-4 w-4" /></button>
             <div className="flex items-center gap-2">
               <div className="text-[14px] font-black">{J_MONTHS[view.jm - 1]} {faNum(view.jy)}</div>
               {(view.jy !== today.jy || view.jm !== today.jm) && (
@@ -448,7 +448,7 @@ export function CalendarClient() {
                 </button>
               )}
             </div>
-            <button onClick={() => shiftMonth(-1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه قبل"><ChevronLeft className="h-4 w-4" /></button>
+            <button onClick={() => shiftMonth(1)} className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink-soft hover:bg-paper-soft" aria-label="ماه بعد"><ChevronRight className="h-4 w-4" /></button>
           </div>
 
           {eventsQuery.isLoading ? (
