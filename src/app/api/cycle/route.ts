@@ -4,6 +4,7 @@ import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
 import { requireHousehold, HttpError } from "@/server/auth/session";
 import { startOfDayUtcFromIso } from "@/lib";
+import { logActivity } from "@/server/household";
 
 // Menstrual cycle tracking — shared by design (both partners see everything).
 // Predictions: average of the last 6 periods — cycle length = gap between
@@ -149,7 +150,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { householdId } = await requireHousehold();
+    const { householdId, user } = await requireHousehold();
     const body = await req.json().catch(() => null);
     const parsed = periodSchema.safeParse(body);
     if (!parsed.success) return fail(400, parsed.error.issues[0]?.message ?? "داده نامعتبر است", "VALIDATION");
@@ -183,6 +184,17 @@ export async function POST(req: NextRequest) {
         ...(d.end ? { end: startOfDayUtcFromIso(d.end) } : {}),
         ...(d.note ? { note: d.note } : {}),
       },
+    });
+    await logActivity({
+      householdId,
+      userId: user.id,
+      type: "CYCLE_LOGGED",
+      summary: `${user.fullName} دوره جدیدی در تقویم ثبت کرد`,
+      entityId: created.id,
+      notifType: "EVENT",
+      notifTitle: "ثبت دوره در تقویم",
+      notifBody: "برای دیدن پیش‌بینی‌ها تقویم را باز کنید",
+      notifLink: "/calendar",
     });
     return ok({ id: created.id }, { status: 201 });
   } catch (err) {

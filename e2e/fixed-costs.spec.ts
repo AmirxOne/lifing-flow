@@ -53,7 +53,14 @@ test.describe("Fixed monthly costs", () => {
     for (const item of mine.data?.items ?? []) {
       if (item.title.includes("تست")) await page.request.delete(`/api/fixed-costs?id=${item.id}`);
     }
-    await page.request.delete("/api/expenses?title=" + encodeURIComponent("قسط ماشین تست (1405-07"));
+    {
+      const exps = await (await page.request.get("/api/expenses?limit=50")).json();
+      for (const e of exps.data?.items ?? []) {
+        if ((e.title ?? "").includes("قسط ماشین تست")) {
+          await page.request.delete(`/api/expenses/${e.id}`);
+        }
+      }
+    }
     await ctx.close();
     await ctx2.close();
   });
