@@ -11,7 +11,7 @@ test.describe("Cycle tracking (shared calendar feature)", () => {
     await pageA.getByRole("button", { name: "ورود" }).click();
     await pageA.waitForURL("**/dashboard", { timeout: 30_000 });
     await pageA.goto("/calendar");
-    await expect(pageA.getByText("دوران قاعدگی").first()).toBeVisible({ timeout: 20_000 });
+    await expect(pageA.getByText("چرخه قاعدگی").first()).toBeVisible({ timeout: 20_000 });
 
     // close any leftover open period from earlier runs (idempotent start state)
     const endBtn = pageA.getByRole("button", { name: "پایان یافت" });
@@ -71,7 +71,7 @@ test.describe("Cycle forecasts & report", () => {
     await page.getByRole("button", { name: "ورود" }).click();
     await page.waitForURL("**/dashboard", { timeout: 30_000 });
     await page.goto("/calendar");
-    await expect(page.getByText("دوران قاعدگی").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("چرخه قاعدگی").first()).toBeVisible({ timeout: 20_000 });
 
     // variance banner about the latest period (test data has late/early periods)
     await expect(page.getByText(/روز (دیرتر|زودتر)/).first()).toBeVisible({ timeout: 15_000 });
@@ -100,13 +100,17 @@ test.describe("PMS window", () => {
     await page.getByRole("button", { name: "ورود" }).click();
     await page.waitForURL("**/dashboard", { timeout: 30_000 });
 
-    // seed a realistic history via API (28-day cycles, last start ~3 weeks ago)
+    // reset to a deterministic history: wipe, then seed 28-day cycles
+    const existing = await (await page.request.get("/api/cycle")).json();
+    for (const p of existing.data?.periods ?? []) {
+      await page.request.delete(`/api/cycle?id=${p.id}`);
+    }
     for (const [s, e] of [["2026-07-18", "2026-07-22"], ["2026-08-15", "2026-08-19"], ["2026-09-12", "2026-09-16"]]) {
       await page.request.post("/api/cycle", { data: { start: s, end: e } });
     }
 
     await page.goto("/calendar");
-    await expect(page.getByText("دوران قاعدگی").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("چرخه قاعدگی").first()).toBeVisible({ timeout: 20_000 });
 
     // legend mentions PMS
     await expect(page.getByText("احتمال PMS").first()).toBeVisible({ timeout: 10_000 });

@@ -143,9 +143,14 @@ export function CalendarClient() {
   // cycle day sets for marking
   const periodDaySet = useMemo(() => {
     const set = new Set<string>();
+    const todayStr = isoOf(new Date());
     for (const p of cycleQuery.data?.periods ?? []) {
       const s = p.start;
-      const e = p.end ?? isoOf(new Date()); // ongoing → until today
+      // closed → start..end; ongoing & started → start..today; ongoing & pre-logged (future start) → start..start+periodLen-1
+      let e: string;
+      if (p.end) e = p.end;
+      else if (s <= todayStr) e = todayStr;
+      else e = p.start; // future-logged open period — mark its expected length
       let d = new Date(s + "T00:00:00Z");
       const end = new Date(e + "T00:00:00Z");
       while (d <= end) {
@@ -297,20 +302,29 @@ export function CalendarClient() {
         const pred = cycleQuery.data?.prediction;
         const stats = cycleQuery.data?.stats;
         const openPeriod = (cycleQuery.data?.periods ?? []).find((p) => !p.end);
+        const cycleLen = stats?.cycleLen ?? 28;
+        const dayOfCycle = pred?.dayOfCycle ?? null;
+        const pct = dayOfCycle ? Math.min(100, Math.round((dayOfCycle / cycleLen) * 100)) : 0;
+
+        const PHASE_FA_FULL: Record<string, { title: string; emoji: string; hint: string; cls: string }> = {
+          PERIOD: { title: "دوران قاعدگی", emoji: "🌸", hint: "مراقب همسر باشید — درد و خستگی طبیعی است", cls: "text-rose-700" },
+          FOLLICULAR: { title: "بعد از قاعدگی", emoji: "🌿", hint: "انرژی معمولا بالاست — وقت خوبی برای قرارها", cls: "text-emerald-700" },
+          OVULATION_WINDOW: { title: "پنجره تخمک‌گذاری", emoji: "🥚", hint: "میانه چرخه — پرانرژی‌ترین زمان", cls: "text-sky-700" },
+          LUTEAL: { title: "قبل از قاعدگی (لوتئال)", emoji: "🌙", hint: "ممکن است حال‌وهوا تغییر کند — PMS طبیعی است", cls: "text-amber-700" },
+          UNKNOWN: { title: "نامشخص", emoji: "🌸", hint: "اولین روز قاعدگی را ثبت کنید", cls: "text-ink-soft" },
+        };
+        const ph = pred?.phase ? PHASE_FA_FULL[pred.phase] : PHASE_FA_FULL.UNKNOWN;
+
         return (
-          <Card className="border-rose-200 bg-rose-50/50">
-            <CardBody className="space-y-2">
+          <Card className="border-rose-200 bg-gradient-to-b from-rose-50/80 to-white">
+            <CardBody className="space-y-3">
+              {/* header row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[18px]" aria-hidden>🌸</span>
                   <div>
-                    <div className="text-[13px] font-bold text-rose-900">دوران قاعدگی</div>
-                    {pred?.phase ? (
-                      <div className="text-[11px] text-rose-700">
-                        {CYCLE_PHASE_FA[pred.phase]}
-                        {pred.dayOfCycle && pred.dayOfCycle > 0 ? ` · روز ${faNum(pred.dayOfCycle)} چرخه` : ""}
-                      </div>
-                    ) : null}
+                    <div className="text-[13px] font-bold text-rose-900">چرخه قاعدگی</div>
+                    <div className="text-[11px] text-rose-700">{stats ? `چرخه ${faNum(cycleLen)} روزه · دوره ${faNum(stats.periodLen)} روزه` : "هنوز داده‌ای نیست"}</div>
                   </div>
                 </div>
                 {openPeriod ? (
@@ -323,38 +337,82 @@ export function CalendarClient() {
                   </Button>
                 )}
               </div>
-              {pred?.nextStart && pred.daysUntilNext !== null && pred.daysUntilNext >= 0 && pred.daysUntilNext < (stats?.cycleLen ?? 60) && (
-                <div className="text-[12px] text-rose-800">
-                  {pred.daysUntilNext === 0
-                    ? "پیش‌بینی: شروع دوران امروز 🌸"
-                    : `پیش‌بینی شروع بعدی: ${faNum(pred.daysUntilNext)} روز دیگر`}
-                  {stats ? ` (چرخه ${faNum(stats.cycleLen)} روزه · ${faNum(stats.periodLen)} روز دوره)` : ""}
+
+              {/* today's status — big & clear */}
+              {(cycleQuery.data?.periods?.length ?? 0) === 0 ? (
+                <div className="rounded-xl border border-dashed border-rose-300 bg-white/70 px-3.5 py-3 text-center text-[11.5px] leading-5 text-ink-faint">
+                  اولین روز قاعدگی را با «+ ثبت دوره» وارد کنید — پیش‌بینی و روزهای PMS خودکار محاسبه می‌شوند.
+                </div>
+              ) : dayOfCycle ? (
+                <div className="flex items-center gap-3.5 rounded-xl bg-white/80 px-3.5 py-3">
+                  <div className="relative flex h-[74px] w-[74px] shrink-0 items-center justify-center">
+                    <svg viewBox="0 0 40 40" className="absolute inset-0 h-full w-full -rotate-90">
+                      <circle cx="20" cy="20" r="16.5" fill="none" stroke="currentColor" className="text-rose-100" strokeWidth="4.5" />
+                      <circle
+                        cx="20" cy="20" r="16.5" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round"
+                        className={pred?.phase === "PERIOD" ? "text-rose-500" : pred?.phase === "LUTEAL" ? "text-amber-500" : "text-emerald-500"}
+                        strokeDasharray={`${(pct / 100) * 103.7} 103.7`}
+                      />
+                    </svg>
+                    <div className="text-center leading-tight">
+                      <div className="text-[17px] font-black text-ink">{faNum(dayOfCycle)}</div>
+                      <div className="text-[8.5px] text-ink-faint">روز چرخه</div>
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className={cn("text-[13.5px] font-black", ph.cls)}>{ph.emoji} {ph.title}</div>
+                    <div className="mt-1 text-[11.5px] leading-5 text-ink-soft">{ph.hint}</div>
+                    {pred?.daysUntilNext !== null && pred?.daysUntilNext !== undefined && pred.daysUntilNext > 0 && (
+                      <div className="mt-1 text-[11.5px] font-bold text-rose-700">
+                        {pred.daysUntilNext === 1 ? "شروع بعدی: فردا" : `شروع بعدی: ${faNum(pred.daysUntilNext)} روز دیگر`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-xl bg-white/80 px-3.5 py-3">
+                  <div className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-full bg-amber-50">
+                    <span className="text-[26px]" aria-hidden>⏳</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-black text-amber-700">🌙 قبل از قاعدگی (لوتئال)</div>
+                    <div className="mt-1 text-[11.5px] leading-5 text-ink-soft">دوره‌ی بعدی ثبت شده — تا شروع:</div>
+                    {pred?.daysUntilNext !== null && pred?.daysUntilNext !== undefined && pred.daysUntilNext > 0 && (
+                      <div className="mt-0.5 text-[13px] font-black text-rose-700">{faNum(pred.daysUntilNext)} روز تا شروع دوره</div>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* ongoing period banner */}
               {openPeriod && (
-                <div className="text-[12px] text-rose-800">دوره جاری از {formatJalali(new Date(openPeriod.start + "T12:00:00+03:30"))} شروع شده — دکمه «پایان یافت» را وقتی تمام شد بزنید.</div>
+                <div className="rounded-lg bg-rose-100/80 px-3 py-2 text-[12px] font-bold text-rose-800">
+                  {openPeriod.start <= isoOf(new Date())
+                    ? <>🌸 دوره از {formatJalali(new Date(openPeriod.start + "T12:00:00+03:30"))} شروع شده و ادامه دارد</>
+                    : <>🌸 دوره برای {formatJalali(new Date(openPeriod.start + "T12:00:00+03:30"))} ثبت شده — وقتی رسید روزهایش روی تقویم مشخص می‌شود</>}
+                </div>
               )}
-              <div className="text-[10.5px] leading-5 text-ink-faint">
-                کافی است اولین روز قاعدگی را ثبت کنید (مثلاً «امروز روز ۲۸ام بود») — طول دوره و پیش‌بینی ماه بعد خودکار محاسبه می‌شود.
-              </div>
+
               {(() => {
                 const v = cycleQuery.data?.lastVariance;
                 if (!v || (v.daysLate === 0 && v.lengthDiff === 0)) return null;
                 const parts: string[] = [];
                 if (v.daysLate > 0) parts.push(`${faNum(v.daysLate)} روز دیرتر از پیش‌بینی شروع شد`);
                 else if (v.daysLate < 0) parts.push(`${faNum(Math.abs(v.daysLate))} روز زودتر از پیش‌بینی شروع شد`);
-                if (v.lengthDiff > 0) parts.push(`${faNum(v.lengthDiff)} روز طولانی‌تر از معمول`);
-                else if (v.lengthDiff < 0) parts.push(`${faNum(Math.abs(v.lengthDiff))} روز کوتاه‌تر از معمول`);
+                else parts.push("سر وقت شروع شد");
+                if (v.lengthDiff > 0) parts.push(`${faNum(v.lengthDiff)} روز طولانی‌تر`);
+                else if (v.lengthDiff < 0) parts.push(`${faNum(Math.abs(v.lengthDiff))} روز کوتاه‌تر`);
                 return (
-                  <div className="rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] leading-5 text-amber-800">
+                  <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] leading-5 text-amber-800">
                     ⏱ دوره اخیر: {parts.join(" و ")}
                   </div>
                 );
               })()}
+
               {(cycleQuery.data?.report?.length ?? 0) > 0 && (
                 <button
                   onClick={() => setCycleReportOpen(true)}
-                  className="text-[11px] text-rose-700 underline underline-offset-4"
+                  className="text-[11px] font-medium text-rose-700 underline underline-offset-4"
                 >
                   گزارش چرخه‌ها ({faNum(cycleQuery.data!.report!.length)} دوره)
                 </button>

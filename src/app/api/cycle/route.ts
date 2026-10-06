@@ -17,6 +17,12 @@ const periodSchema = z.object({
 
 const DAY = 86_400_000;
 
+/** Date → "yyyy-mm-dd" in Tehran local time. NEVER .toISOString().slice(0,10)
+ *  (stored dates are Tehran midnights = 20:30Z of the previous UTC day). */
+function tehranIso(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
 function toUtc(iso: string | Date): number {
   return (typeof iso === "string" ? startOfDayUtcFromIso(iso) : iso).getTime();
 }
@@ -63,11 +69,15 @@ export async function GET() {
 
     if (lastStart !== null) {
       dayOfCycle = Math.floor((today - lastStart) / DAY) + 1;
-      nextStart = new Date(lastStart + cycleLen * DAY).toISOString().slice(0, 10);
+      nextStart = tehranIso(new Date(lastStart + cycleLen * DAY));
       daysUntilNext = Math.round((toUtc(nextStart) - today) / DAY);
 
       const d = (today - lastStart) / DAY; // 0-based day within cycle
-      if (d < periodLen) phase = "PERIOD";
+      if (d < 0) {
+        // the logged start is in the future (pre-logged) — count DOWN to it
+        phase = "LUTEAL";
+        dayOfCycle = null;
+      } else if (d < periodLen) phase = "PERIOD";
       else if (d >= cycleLen - 14 - 2 && d <= cycleLen - 14 + 2) phase = "OVULATION_WINDOW";
       else if (d > cycleLen - 14 + 2) phase = "LUTEAL";
       else phase = "FOLLICULAR";
@@ -76,15 +86,15 @@ export async function GET() {
     // forecasts: next up-to-3 predicted starts (covers following months)
     const forecasts: string[] = [];
     // PMS window: the few days right BEFORE each predicted start
-    const PMS_DAYS = 4;
+    const PMS_DAYS = 5;
     const pmsDays: string[] = [];
     if (lastStart !== null) {
       for (let n = 1; n <= 3; n++) {
         const fMs = lastStart + cycleLen * n * DAY;
-        const f = new Date(fMs).toISOString().slice(0, 10);
+        const f = tehranIso(new Date(fMs));
         if (toUtc(f) >= today) forecasts.push(f);
         for (let k = PMS_DAYS; k >= 1; k--) {
-          const d = new Date(fMs - k * DAY).toISOString().slice(0, 10);
+          const d = tehranIso(new Date(fMs - k * DAY));
           if (toUtc(d) >= today) pmsDays.push(d);
         }
       }
@@ -108,8 +118,8 @@ export async function GET() {
       const len = (toUtc(p.end!) - toUtc(p.start)) / DAY + 1;
       return {
         id: p.id,
-        start: p.start.toISOString().slice(0, 10),
-        end: p.end!.toISOString().slice(0, 10),
+        start: tehranIso(p.start),
+        end: tehranIso(p.end!),
         len: Math.round(len),
         gap: prev ? Math.round((toUtc(p.start) - toUtc(prev.start)) / DAY) : null,
         daysLate: prev ? Math.round((toUtc(p.start) - (toUtc(prev.start) + cycleLen * DAY)) / DAY) : null,
@@ -123,8 +133,8 @@ export async function GET() {
       report,
       periods: periods.map((p) => ({
         id: p.id,
-        start: p.start.toISOString().slice(0, 10),
-        end: p.end ? p.end.toISOString().slice(0, 10) : null,
+        start: tehranIso(p.start),
+        end: p.end ? tehranIso(p.end) : null,
         note: p.note,
       })),
       stats: { cycleLen, periodLen },
@@ -149,10 +159,11 @@ export async function POST(req: NextRequest) {
       return fail(400, "تاریخ پایان نمی‌تواند قبل از شروع باشد", "BAD_RANGE");
     }
 
-    // a period can only be logged once it has STARTED — no future dates.
-    // (future predictions are computed forecasts, never records)
-    if (toUtc(d.start) > todayUtc()) {
-      return fail(400, "نمی‌توان دوره‌ای با تاریخ آینده ثبت کرد — پیش‌بینی‌ها خودکار محاسبه می‌شوند", "FUTURE_DATE");
+    // A period can be logged up to 3 days ahead (some log the start the same
+    // morning they feel it coming), but never further — far-future dates are
+    // forecasts, which the system computes automatically.
+    if (toUtc(d.start) > todayUtc() + 60 * DAY) {
+      return fail(400, "تاریخ شروع بیش از ۶۰ روز جلوتر است", "FUTURE_DATE");
     }
 
     // one open period at a time — close any ongoing one first
