@@ -13,7 +13,8 @@ const eventSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "ساعت نامعتبر است").optional(),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "ساعت نامعتبر است").optional(),
   location: z.string().trim().max(120).optional(),
-  kind: z.enum(EVENT_KINDS).default("SHARED"),
+  // known kinds OR any custom kind the couple invents (stored as a free string)
+  kind: z.enum(EVENT_KINDS).or(z.string().trim().min(1, "نوع را وارد کنید").max(30, "نوع حداکثر ۳۰ کاراکتر است")).default("SHARED"),
   reminder: z.enum(REMINDERS).optional(),
   recurrence: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]).default("NONE"),
 });

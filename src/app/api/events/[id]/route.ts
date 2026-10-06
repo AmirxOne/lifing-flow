@@ -15,7 +15,7 @@ const patchSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   location: z.string().trim().max(120).nullable().optional(),
-  kind: z.enum(EVENT_KINDS).optional(),
+  kind: z.enum(EVENT_KINDS).or(z.string().trim().min(1, "نوع را وارد کنید").max(30, "نوع حداکثر ۳۰ کاراکتر است")).optional(),
   reminder: z.enum(REMINDERS).nullable().optional(),
   recurrence: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]).optional(),
 });

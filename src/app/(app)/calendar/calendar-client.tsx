@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { ApiError } from "@/lib/api";
@@ -15,7 +15,7 @@ import { Card, CardHeader, CardBody, EmptyState, SkeletonBlock } from "@/compone
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
 import {
   EVENT_KINDS, EVENT_KIND_FA, EVENT_KIND_EMOJI, REMINDERS, REMINDER_FA,
-  IMPORTANT_KINDS, IMPORTANT_KIND_FA,
+  IMPORTANT_KINDS, IMPORTANT_KIND_FA, type EventKind,
 } from "@/lib";
 import {formatJalali, 
   jalaliToday, jMonthGrid, toGregorian, J_MONTHS, jalaliPartsInTz,
@@ -53,9 +53,23 @@ export function CalendarClient() {
 
   const today = jalaliToday();
   const [view, setView] = useState({ jy: today.jy, jm: today.jm });
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("lh-custom-kinds") ?? "[]");
+      if (Array.isArray(saved)) setCustomKinds(saved.filter((x) => typeof x === "string").slice(0, 12));
+    } catch {}
+  }, []);
+  const persistCustomKinds = (next: string[]) => {
+    setCustomKinds(next);
+    try { localStorage.setItem("lh-custom-kinds", JSON.stringify(next.slice(0, 12))); } catch {}
+  };
   const [selected, setSelected] = useState<string>(isoOf(new Date()));
 
   const [evModal, setEvModal] = useState(false);
+  // custom event kinds invented by the couple (persisted in localStorage)
+  const [customKinds, setCustomKinds] = useState<string[]>([]);
+  const [customKind, setCustomKind] = useState("");
+  const [showCustomKind, setShowCustomKind] = useState(false);
   const [editing, setEditing] = useState<Ev | null>(null);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState("SHARED");
@@ -259,6 +273,7 @@ export function CalendarClient() {
 
   const grid = jMonthGrid(view.jy, view.jm);
   const todayIso = isoOf(new Date());
+  const isCustomActive = !EVENT_KINDS.includes(kind as EventKind);
   const selectedEvents = eventsByDate.get(selected) ?? [];
 
   function openCreate(iso?: string) {
@@ -542,11 +557,11 @@ export function CalendarClient() {
                   ) : (
                     selectedEvents.map((e) => (
                       <div key={e.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2">
-                        <span className="text-[18px]" aria-hidden>{EVENT_KIND_EMOJI[e.kind]}</span>
+                        <span className="text-[18px]" aria-hidden>{EVENT_KIND_EMOJI[e.kind] ?? "✨"}</span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13px] font-bold">{e.title}</div>
                           <div className="text-[11px] text-ink-faint">
-                            {EVENT_KIND_FA[e.kind]}
+                            {EVENT_KIND_FA[e.kind] ?? e.kind}
                             {e.startTime ? ` · ${faStr(e.startTime)}${e.endTime ? ` تا ${faStr(e.endTime)}` : ""}` : ""}
                             {e.location ? ` · ${e.location}` : ""}
                             {e.recurrence !== "NONE" ? " · تکرارشونده" : ""}
@@ -615,18 +630,87 @@ export function CalendarClient() {
             <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
             <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً شام خارج از خانه" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="kind" className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع</label>
-              <Select value={kind} onChange={setKind} options={EVENT_KINDS.map((k) => ({ value: k, label: `${EVENT_KIND_EMOJI[k]} ${EVENT_KIND_FA[k]}` }))} />
+
+          {/* type chips + custom type */}
+          <div>
+            <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">نوع رویداد</span>
+            <div className="flex flex-wrap gap-1.5">
+              {EVENT_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => { setKind(k); setCustomKind(""); }}
+                  aria-pressed={kind === k}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                    kind === k ? "border-ink bg-ink text-white" : "border-line bg-white text-ink-soft hover:bg-paper-soft",
+                  )}
+                >
+                  {EVENT_KIND_EMOJI[k]} {EVENT_KIND_FA[k]}
+                </button>
+              ))}
+              {customKinds.map((ck) => (
+                <button
+                  key={ck}
+                  type="button"
+                  onClick={() => { setKind(ck); setCustomKind(""); }}
+                  aria-pressed={kind === ck}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                    kind === ck ? "border-ink bg-ink text-white" : "border-line bg-white text-ink-soft hover:bg-paper-soft",
+                  )}
+                >
+                  ✨ {ck}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowCustomKind((v) => !v)}
+                aria-expanded={showCustomKind}
+                className={cn(
+                  "rounded-full border border-dashed px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  showCustomKind ? "border-ink bg-paper-soft" : "border-line text-ink-faint hover:bg-paper-soft",
+                )}
+              >
+                ＋ نوع دلخواه
+              </button>
             </div>
-            <div>
-              <label htmlFor="date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
-              <div className="text-[13px]">{(() => {
-                const p = jalaliPartsInTz(new Date(dateIso + "T12:00:00+03:30"));
-                return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
-              })()}</div>
-            </div>
+            {showCustomKind && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={customKind}
+                  onChange={(e) => setCustomKind(e.target.value)}
+                  className="h-9 min-w-0 flex-1 rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft"
+                  placeholder="مثلاً تمرین شنا، جلسه پزشک، سفر…"
+                  aria-label="نوع دلخواه جدید"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!customKind.trim()}
+                  onClick={() => {
+                    const t = customKind.trim();
+                    if (!t) return;
+                    if (!customKinds.includes(t)) persistCustomKinds([...customKinds, t]);
+                    setKind(t);
+                    setShowCustomKind(false);
+                  }}
+                >
+                  افزودن
+                </Button>
+              </div>
+            )}
+            {isCustomActive && (
+              <p className="mt-1.5 text-[11px] text-ink-faint">
+                نوع سفارشی «{kind}» — همسرتان هم همین نوع را خواهد دید
+              </p>
+            )}
+          </div>
+
+          {/* editable date */}
+          <div>
+            <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</span>
+            <JalaliDatePicker value={dateIso} onChange={setDateIso} />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
@@ -683,11 +767,8 @@ export function CalendarClient() {
               <Select value={impKind} onChange={setImpKind} options={IMPORTANT_KINDS.map((k) => ({ value: k, label: IMPORTANT_KIND_FA[k] }))} />
             </div>
             <div>
-              <label htmlFor="date" className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</label>
-              <div className="pt-2 text-[13px]">{(() => {
-                const p = jalaliPartsInTz(new Date(impDate + "T12:00:00+03:30"));
-                return `${faNum(p.jd)} ${J_MONTHS[p.jm - 1]} ${faNum(p.jy)}`;
-              })()}</div>
+              <span className="mb-1.5 block text-[12px] font-medium text-ink-soft">تاریخ</span>
+              <JalaliDatePicker value={impDate} onChange={setImpDate} />
             </div>
           </div>
           <input id="date" type="date" value={impDate} onChange={(e) => setImpDate(e.target.value)} className="hidden" aria-hidden />
