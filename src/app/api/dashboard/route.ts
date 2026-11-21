@@ -1,7 +1,7 @@
 import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
 import { requireHousehold, HttpError } from "@/server/auth/session";
-import { addDays, isoDateInTz } from "@/lib";
+import { addDays, isoDateInTz, expandRecurringDates } from "@/lib";
 import { faNum } from "@/lib/fa";
 
 const DAY = 86_400_000;
@@ -54,8 +54,15 @@ export async function GET() {
         take: 10,
         orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       }),
+      // events whose own date is in the next 7 days + recurring ones started earlier
       prisma.eventModel.findMany({
-        where: { householdId, date: { gte: todayStart, lt: weekEnd } },
+        where: {
+          householdId,
+          OR: [
+            { date: { gte: todayStart, lt: weekEnd } },
+            { recurrence: { in: ["DAILY", "WEEKLY", "MONTHLY"] }, date: { lt: todayStart, gte: addDays(todayStart, -400) } },
+          ],
+        },
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
         take: 10,
       }),
@@ -196,12 +203,29 @@ export async function GET() {
       return { id: g.id, title: g.title, targetAmount: g.targetAmount, saved, pct: g.targetAmount > 0 ? Math.min(100, Math.round((saved / g.targetAmount) * 100)) : 0 };
     });
 
+    // expand recurring events into their actual occurrences this week
+    const weekIso = isoDateInTz(weekEnd);
+    const eventsThisWeek: Array<{ id: string; title: string; date: string; startTime: string | null; kind: string }> = [];
+    for (const ev of upcomingEvents) {
+      const startIso = isoDateInTz(ev.date);
+      if (ev.recurrence !== "NONE") {
+        for (const occ of expandRecurringDates(startIso, ev.recurrence, todayIso, weekIso)) {
+          eventsThisWeek.push({ id: ev.id, title: ev.title, date: occ, startTime: ev.startTime, kind: ev.kind });
+        }
+      } else {
+        eventsThisWeek.push({ id: ev.id, title: ev.title, date: startIso, startTime: ev.startTime, kind: ev.kind });
+      }
+    }
+    eventsThisWeek.sort((a, b) => a.date === b.date
+      ? (a.startTime ?? "").localeCompare(b.startTime ?? "")
+      : a.date.localeCompare(b.date));
+
     return ok({
       today: {
         expenses: todayExpenses.map((e) => ({ id: e.id, title: e.title, amount: e.amount, category: e.category, payer: e.payer.fullName })),
         expensesTotal: todayExpenses.reduce((s, e) => s + e.amount, 0),
         tasks: todayTasks,
-        events: upcomingEvents,
+        events: eventsThisWeek.slice(0, 10),
         myMood: myMood,
         partnerMood: partnerMoodRow,
       },

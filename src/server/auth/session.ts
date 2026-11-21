@@ -25,10 +25,15 @@ export function newSessionToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+/** Session TTL in seconds — single source of truth for DB rows AND cookie maxAge. */
+export function sessionTtlSeconds(): number {
+  const hours = Number(process.env.SESSION_TTL_HOURS ?? 168);
+  return Math.max(1, Number.isFinite(hours) ? hours : 168) * 3600;
+}
+
 export async function createSession(userId: string): Promise<string> {
   const token = newSessionToken();
-  const ttlHours = Number(process.env.SESSION_TTL_HOURS ?? 168);
-  const expiresAt = new Date(Date.now() + ttlHours * 3600000);
+  const expiresAt = new Date(Date.now() + sessionTtlSeconds() * 1000);
   await prisma.session.create({ data: { token: hashToken(token), userId, expiresAt } });
   return token;
 }

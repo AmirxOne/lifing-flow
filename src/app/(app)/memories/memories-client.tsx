@@ -15,7 +15,7 @@ import { formatJalali } from "@/lib/jalali";
 
 interface Memory {
   id: string; title: string; description: string | null; date: string;
-  tags: string[] | null;
+  tags: string[] | null; photos: string[] | null;
   createdBy: { id: string; fullName: string };
 }
 
@@ -31,6 +31,10 @@ export function MemoriesClient() {
   const [date, setDate] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(new Date()));
   const [tags, setTags] = useState("");
   const [search, setSearch] = useState("");
+  // photos: uploaded refs (max 9) — upload happens immediately on pick
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["memories"],
@@ -45,16 +49,40 @@ export function MemoriesClient() {
         description: description.trim() || undefined,
         date,
         tags: tags.split(/[،,]/).map((s) => s.trim()).filter(Boolean).length ? tags.split(/[،,]/).map((s) => s.trim()).filter(Boolean) : undefined,
+        photoUrls: photoUrls.length ? photoUrls : undefined,
       },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["memories"] });
       toast.push("خاطره ثبت شد 💞", "success");
       setModalOpen(false);
-      setTitle(""); setDescription(""); setTags("");
+      setTitle(""); setDescription(""); setTags(""); setPhotoUrls([]);
     },
     onError: (err) => toast.push(err instanceof Error ? err.message : "خطا", "error"),
   });
+
+  // immediate upload on pick — content-addressed server dedupes identical photos
+  async function onPickPhotos(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const room = 9 - photoUrls.length;
+    if (room <= 0) { toast.push("حداکثر ۹ عکس برای هر خاطره", "error"); return; }
+    const list = Array.from(files).slice(0, room);
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const f of list) {
+        const fd = new FormData();
+        fd.append("file", f);
+        const res = await api<{ url: string }>("/api/uploads", { method: "POST", form: fd });
+        urls.push(res.url);
+      }
+      setPhotoUrls((prev) => [...prev, ...urls].slice(0, 9));
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "آپلود عکس ناموفق بود", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api(`/api/memories/${id}`, { method: "DELETE" }),
@@ -120,6 +148,16 @@ export function MemoriesClient() {
               {m.description && (
                 <p className="mt-2 text-[13px] leading-6 text-ink-soft">{m.description}</p>
               )}
+              {m.photos && m.photos.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-1.5">
+                  {m.photos.map((p, i) => (
+                    <button key={`${m.id}-${i}`} type="button" onClick={() => setLightbox(p)} className="group relative aspect-square overflow-hidden rounded-md border border-line">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p} alt={`عکس ${i + 1} از ${m.title}`} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                    </button>
+                  ))}
+                </div>
+              )}
               {m.tags && m.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {m.tags.map((t) => <span key={t} className="badge badge-gray">#{t}</span>)}
@@ -158,8 +196,36 @@ export function MemoriesClient() {
             <label htmlFor="tags" className="mb-1.5 block text-[12px] font-medium text-ink-soft">برچسب‌ها (با ویرگول جدا کنید)</label>
             <input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="سفر، شمال" />
           </div>
+          <div>
+            <label htmlFor="photos" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عکس‌ها (حداکثر ۹ عکس، هر کدام تا ۵ مگابایت)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {photoUrls.map((u, i) => (
+                <div key={u} className="relative aspect-square w-16 shrink-0 overflow-hidden rounded-md border border-line">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt={`عکس ${i + 1}`} className="h-full w-full object-cover" />
+                  <button type="button" onClick={() => setPhotoUrls((prev) => prev.filter((x) => x !== u))} className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[11px] text-white hover:bg-red-600" aria-label={`حذف عکس ${i + 1}`}>✕</button>
+                </div>
+              ))}
+              {photoUrls.length < 9 && (
+                <label id="photos" className={`flex aspect-square w-16 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-line text-ink-faint transition-colors hover:border-ink-soft hover:text-ink-soft ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                  <span className="text-lg" aria-hidden>{uploading ? "⏳" : "＋"}</span>
+                  <span className="text-[9px]">{uploading ? "در حال آپلود" : "افزودن"}</span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={(e) => { onPickPhotos(e.target.files); e.currentTarget.value = ""; }} disabled={uploading} />
+                </label>
+              )}
+            </div>
+          </div>
         </div>
       </Modal>
+
+      {/* full-screen photo viewer */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4" onClick={() => setLightbox(null)} role="dialog" aria-modal="true" aria-label="نمایش عکس">
+          <button className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/30" aria-label="بستن">✕</button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="عکس خاطره" className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

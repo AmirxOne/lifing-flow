@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const { id } = await params;
     const existing = await prisma.task.findFirst({
       where: { id, householdId },
-      select: { id: true, title: true, status: true, recurrence: true, recurrenceInterval: true, dueDate: true },
+      select: { id: true, title: true, description: true, priority: true, status: true, recurrence: true, recurrenceInterval: true, dueDate: true },
     });
     if (!existing) return fail(404, "کار پیدا نشد", "NOT_FOUND");
 
@@ -66,10 +66,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             data: {
               householdId,
               title: existing.title,
-              description: null,
+              // carry over the task's own context — don't lose it on recurrence
+              description: existing.description,
               assignedToId: d.assignedToId ?? null,
               dueDate: next,
-              priority: "NORMAL",
+              priority: existing.priority,
               recurrence: existing.recurrence,
               recurrenceInterval: existing.recurrenceInterval,
             },

@@ -1,8 +1,9 @@
-import { tzOffsetMinutes, jalaliPartsInTz } from "./jalali";
+import { tzOffsetMinutes, jalaliPartsInTz, jMonthLen } from "./jalali";
 
 export * from "./fa";
 export * from "./jalali";
 export { tzOffsetMinutes } from "./jalali";
+export { jMonthLen } from "./jalali";
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
@@ -189,4 +190,75 @@ export function faPercent(n: number): string {
 export function jalaliMonthKey(date = new Date()): string {
   const p = jalaliPartsInTz(date, "Asia/Tehran");
   return `${p.jy}-${pad2(p.jm)}`;
+}
+
+// ── Event recurrence expansion (single source of truth: server + client) ──────────
+
+export type RecurrenceKind = "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+
+/** Jalali-aware month add: keeps clamped day-of-month when target month is shorter. */
+export function addJalaliMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const total = (y * 12 + (m - 1)) + months;
+  const jy = Math.floor(total / 12);
+  const jm = (total % 12) + 1;
+  const maxDay = jMonthLen(jy, jm);
+  return `${jy}-${pad2(jm)}-${pad2(Math.min(d, maxDay))}`;
+}
+
+const RECURRENCE_DAY_MS = 86_400_000;
+
+function isoToUtcNoon(iso: string): Date {
+  return new Date(`${iso}T00:00:00Z`);
+}
+
+/** Days between two ISO dates, counting a 1-day step as exactly 1 (UTC math). */
+export function daysBetweenIso(aIso: string, bIso: string): number {
+  return Math.round((isoToUtcNoon(bIso).getTime() - isoToUtcNoon(aIso).getTime()) / RECURRENCE_DAY_MS);
+}
+
+/**
+ * Expand a recurring event into the ISO dates it occurs on within [fromIso, toIso].
+ * Guarded: occurrences are capped so a years-old DAILY event can't blow up a request.
+ */
+export function expandRecurringDates(
+  startIso: string,
+  recurrence: string,
+  fromIso: string,
+  toIso: string,
+  maxOccurrences = 400,
+): string[] {
+  if (recurrence === "DAILY" || recurrence === "WEEKLY" || recurrence === "MONTHLY") {
+    // DAILY: every day; WEEKLY: every 7 days; MONTHLY: same Jalali day-of-month.
+    const out: string[] = [];
+    if (recurrence === "MONTHLY") {
+      // start from the first month whose occurrence could land >= fromIso
+      const diffDays = daysBetweenIso(startIso, fromIso);
+      let monthsAhead = Math.max(0, Math.floor(diffDays / 28) - 1);
+      for (let i = 0; i < 24 && out.length < maxOccurrences; i++) {
+        const occ = addJalaliMonths(startIso, monthsAhead);
+        if (occ > toIso) break;
+        if (occ >= fromIso) out.push(occ);
+        monthsAhead += 1;
+      }
+      return out;
+    }
+    const stepDays = recurrence === "DAILY" ? 1 : 7;
+    let d = isoToUtcNoon(startIso);
+    const from = isoToUtcNoon(fromIso);
+    // fast-forward: if the event started long before the window, jump ahead
+    const totalDays = Math.round((from.getTime() - d.getTime()) / RECURRENCE_DAY_MS);
+    if (totalDays > stepDays) {
+      const jumps = Math.floor(totalDays / stepDays);
+      d = new Date(d.getTime() + jumps * stepDays * RECURRENCE_DAY_MS);
+    }
+    const to = isoToUtcNoon(toIso);
+    while (d.getTime() <= to.getTime() && out.length < maxOccurrences) {
+      const iso = d.toISOString().slice(0, 10);
+      if (iso >= fromIso) out.push(iso);
+      d = new Date(d.getTime() + stepDays * RECURRENCE_DAY_MS);
+    }
+    return out;
+  }
+  return []; // NONE / unknown → only the original date (callers handle it)
 }

@@ -18,7 +18,7 @@ const taskSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const { householdId } = await requireHousehold();
+    const { user, householdId } = await requireHousehold();
     const sp = req.nextUrl.searchParams;
     const status = sp.get("status"); // OPEN | DONE | all
     const mine = sp.get("mine") === "1";
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     const where = {
       householdId,
       ...(status === "OPEN" || status === "DONE" ? { status } : {}),
+      ...(mine ? { assignedToId: user.id } : {}),
     };
 
     const items = await prisma.task.findMany({

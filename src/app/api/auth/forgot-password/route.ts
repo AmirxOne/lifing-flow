@@ -34,8 +34,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // zero-cost private app: no mail server — return the link directly
-    return ok({ sent: true, resetPath: `/reset-password?token=${token}` });
+    // zero-cost private app: no mail server — the reset link goes to the
+    // SERVER LOG only (docker logs / pnpm dev output). Never exposed in the
+    // HTTP response: anyone must not be able to reset someone else's password
+    // by just knowing their email.
+    console.log(`[reset-link] ${parsed.data.email} → /reset-password?token=${token}`);
+    return ok({ sent: true });
   } catch (err) {
     console.error("[forgot-password]", err);
     return fail(500, "خطای سرور — لطفاً دوباره تلاش کنید", "INTERNAL");

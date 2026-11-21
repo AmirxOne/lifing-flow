@@ -3,7 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
-import { SESSION_COOKIE, createSession } from "@/server/auth/session";
+import { SESSION_COOKIE, createSession, sessionTtlSeconds } from "@/server/auth/session";
 import { logActivity } from "@/server/household";
 import { toEnDigits } from "@/lib/fa";
 import { recordFailure, isLimited } from "@/server/rate-limit";
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: sessionTtlSeconds(),
     });
     return res;
   } catch (err) {

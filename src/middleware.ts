@@ -18,9 +18,15 @@ const PUBLIC_PATHS = [
   "/offline.html",
 ];
 
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p))) {
+  if (isPublic(pathname)) {
     return NextResponse.next();
   }
   const hasSession = req.cookies.get("lh_session")?.value;

@@ -3,7 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/server/db";
 import { ok, fail } from "@/server/http";
-import { requireUser, HttpError, destroyAllSessions, createSession, SESSION_COOKIE } from "@/server/auth/session";
+import { requireUser, HttpError, destroyAllSessions, createSession, SESSION_COOKIE, sessionTtlSeconds } from "@/server/auth/session";
 
 const patchSchema = z.object({
   fullName: z.string().trim().min(2, "نام باید حداقل ۲ حرف باشد").max(60).optional(),
@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: sessionTtlSeconds(),
     });
     return res;
   } catch (err) {

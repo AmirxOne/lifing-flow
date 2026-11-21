@@ -23,7 +23,7 @@ import { faStr, faNum } from "@/lib/fa";
 import { cn } from "@/lib";
 
 interface Ev {
-  id: string; title: string; description: string | null; date: string;
+  id: string; title: string; description: string | null; date: string; dateIso: string;
   startTime: string | null; endTime: string | null; location: string | null;
   kind: string; reminder: string | null; recurrence: string;
 }
@@ -262,13 +262,12 @@ export function CalendarClient() {
     if (yes) deleteEvMutation.mutate(e.id);
   }
 
-  // month events by iso date
+  // month events by iso date — server returns dateIso (YYYY-MM-DD) per occurrence
   const eventsByDate = useMemo(() => {
     const map = new Map<string, Ev[]>();
     for (const e of eventsQuery.data?.items ?? []) {
-      const iso = isoOf(new Date(e.date));
-      if (!map.has(iso)) map.set(iso, []);
-      map.get(iso)!.push(e);
+      if (!map.has(e.dateIso)) map.set(e.dateIso, []);
+      map.get(e.dateIso)!.push(e);
     }
     return map;
   }, [eventsQuery.data]);
@@ -288,7 +287,7 @@ export function CalendarClient() {
   function openEdit(e: Ev) {
     setEditing(e);
     setTitle(e.title); setKind(e.kind);
-    setDateIso(isoOf(new Date(e.date)));
+    setDateIso(e.dateIso.slice(0, 10));
     setStartTime(e.startTime ?? ""); setEndTime(e.endTime ?? "");
     setLocation(e.location ?? ""); setReminder(e.reminder ?? "NONE"); setRecurrence(e.recurrence);
     setEvModal(true);
@@ -814,8 +813,8 @@ export function CalendarClient() {
       >
         <div className="space-y-3">
           <div>
-            <label htmlFor="title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
-            <input id="title" value={impTitle} onChange={(e) => setImpTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً تولد سارا" />
+            <label htmlFor="imp-title" className="mb-1.5 block text-[12px] font-medium text-ink-soft">عنوان</label>
+            <input id="imp-title" value={impTitle} onChange={(e) => setImpTitle(e.target.value)} className="h-10 w-full rounded-md border border-line px-3 text-[13px] outline-none focus:border-ink-soft" placeholder="مثلاً تولد سارا" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

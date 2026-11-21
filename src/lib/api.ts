@@ -10,16 +10,17 @@ export interface ApiError extends Error {
 
 export async function api<T>(
   path: string,
-  init?: RequestInit & { json?: unknown },
+  init?: RequestInit & { json?: unknown; form?: FormData },
 ): Promise<T> {
-  const { json, ...rest } = init ?? {};
+  const { json, form, ...rest } = init ?? {};
   const res = await fetch(path, {
     ...rest,
     headers: {
       ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
       ...rest.headers,
     },
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
+    // FormData must NOT get a manual Content-Type — the browser sets the boundary
+    body: json !== undefined ? JSON.stringify(json) : (form ?? rest.body),
     credentials: "same-origin",
   });
   let payload: {

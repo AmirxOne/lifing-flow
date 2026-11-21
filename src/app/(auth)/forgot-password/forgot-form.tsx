@@ -9,7 +9,6 @@ export function ForgotForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resetPath, setResetPath] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -17,12 +16,11 @@ export function ForgotForm() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api<{ sent: boolean; resetPath?: string }>("/api/auth/forgot-password", {
+      await api<{ sent: boolean }>("/api/auth/forgot-password", {
         method: "POST",
         json: { email },
       });
       setSent(true);
-      setResetPath(res.resetPath ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "خطا — دوباره تلاش کنید");
     } finally {
@@ -42,20 +40,11 @@ export function ForgotForm() {
         {sent ? (
           <div className="space-y-4 rounded-xl border border-line bg-white p-5 shadow-sm">
             <div className="rounded-md bg-emerald-50 px-3 py-2.5 text-[12px] leading-6 text-emerald-700">
-              ✅ درخواست ثبت شد. چون این اپ خصوصی و بدون سرور ایمیل است، لینک بازیابی مستقیماً همین‌جا نمایش داده می‌شود:
+              ✅ درخواست ثبت شد. چون این اپ خصوصی و بدون سرور ایمیل است، لینک بازیابی در لاگ سرور (خروجی <code dir="ltr">pnpm dev</code> یا <code dir="ltr">docker logs</code>) با برچسب <code dir="ltr">[reset-link]</code> درج می‌شود.
             </div>
-            {resetPath ? (
-              <Link
-                href={resetPath}
-                className="block rounded-md bg-ink px-4 py-2.5 text-center text-[13px] font-bold text-white transition-colors hover:bg-[#2a2a2e]"
-              >
-                تعیین رمز جدید
-              </Link>
-            ) : (
-              <p className="text-center text-[12px] text-ink-soft">
-                اگر حسابی با این ایمیل وجود داشته باشد، لینک بازیابی ساخته می‌شود.
-              </p>
-            )}
+            <p className="text-center text-[12px] text-ink-soft">
+              اگر حسابی با این ایمیل وجود داشته باشد، لینک بازیابی معتبر ۱ ساعت ساخته می‌شود.
+            </p>
             <Link href="/login" className="block text-center text-[12px] text-ink-soft underline underline-offset-4">
               بازگشت به ورود
             </Link>
